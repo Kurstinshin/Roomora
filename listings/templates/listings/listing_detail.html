@@ -1,0 +1,90 @@
+{% load static humanize %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ listing.title }} — Roomora</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+    <style>
+        .detail-page { max-width: 800px; margin: 48px auto; padding: 0 28px 80px; }
+        .back-link {
+            display: inline-flex; align-items: center; gap: 6px;
+            color: var(--text-muted); font-size: 0.875rem; font-weight: 500;
+            text-decoration: none; margin-bottom: 28px;
+            transition: color 0.2s;
+        }
+        .back-link:hover { color: var(--primary); }
+        .detail-card {
+            background: var(--surface); border-radius: 18px;
+            box-shadow: 0 8px 32px rgba(0,0,0,.1);
+            overflow: hidden; border: 1px solid var(--border);
+        }
+        .detail-image { width: 100%; height: 360px; object-fit: cover; display: block; }
+        .detail-body { padding: 36px; }
+        .detail-title { font-size: 1.75rem; font-weight: 800; color: var(--text-main); margin-bottom: 16px; letter-spacing: -0.5px; }
+        .detail-meta { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 28px; }
+        .meta-chip {
+            display: flex; align-items: center; gap: 8px;
+            background: #f1f5f9; border-radius: 8px; padding: 10px 16px;
+            font-size: 0.9rem; font-weight: 600; color: var(--text-main);
+        }
+        .meta-chip.price { background: #ede9fe; color: var(--primary-dark); }
+        .detail-description { font-size: 1rem; color: var(--text-muted); line-height: 1.8; margin-bottom: 32px; }
+        .detail-description strong { color: var(--text-main); display: block; margin-bottom: 10px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    </style>
+</head>
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="navbar-inner">
+            <a href="{% url 'dashboard' %}" class="navbar-brand">
+                <span class="brand-icon">🏠</span>
+                <span class="brand-name">Roomora</span>
+            </a>
+            <div class="navbar-right">
+                <a href="{% url 'logout' %}" class="logout-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="detail-page">
+        <a href="{% url 'dashboard' %}" class="back-link">
+            ← Back to listings
+        </a>
+
+        <div class="detail-card">
+            <img src="{{ listing.image_url }}" alt="{{ listing.title }}" class="detail-image">
+            <div class="detail-body">
+                <h1 class="detail-title">{{ listing.title }}</h1>
+                <div class="detail-meta">
+                    <div class="meta-chip">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                        {{ listing.location }}
+                    </div>
+                    <div class="meta-chip price">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        ₱{{ listing.price|intcomma }}/month
+                    </div>
+                </div>
+                <div class="detail-description">
+                    <strong>About this room</strong>
+                    {{ listing.description }}
+                </div>
+                <a href="{% url 'dashboard' %}" class="card-btn" style="max-width: 200px;">← Back to Dashboard</a>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>© 2026 Roomora. All rights reserved.</p>
+    </footer>
+
+</body>
+</html>
