@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from django.db.models import Q
 
 from .forms import LoginForm, RegisterForm
-from listings.models import Listing
+from listings.models import BoardingHouse
 
 
 def home(request):
@@ -69,22 +69,22 @@ def logout_view(request):
 
 
 def _seed_default_listings():
-    if not Listing.objects.filter(is_active=True).exists():
-        Listing.objects.bulk_create([
-            Listing(
-                title="Room A",
-                location="Cebu City",
+    if not BoardingHouse.objects.filter(is_active=True).exists():
+        BoardingHouse.objects.bulk_create([
+            BoardingHouse(
+                house_name="Room A",
+                address="Cebu City",
                 price=4500,
                 description="Comfortable boarding house with fast Wi-Fi and easy access to transport.",
-                image_url="https://via.placeholder.com/640x360?text=Room+A",
+                image="https://via.placeholder.com/640x360?text=Room+A",
                 is_active=True,
             ),
-            Listing(
-                title="Room B",
-                location="Mandaue City",
+            BoardingHouse(
+                house_name="Room B",
+                address="Mandaue City",
                 price=5000,
                 description="Clean and cozy boarding house close to malls and restaurants.",
-                image_url="https://via.placeholder.com/640x360?text=Room+B",
+                image="https://via.placeholder.com/640x360?text=Room+B",
                 is_active=True,
             ),
         ])
@@ -94,20 +94,20 @@ def _seed_default_listings():
 def dashboard(request):
     _seed_default_listings()
 
-    listings = Listing.objects.filter(is_active=True)
+    listings = BoardingHouse.objects.filter(is_active=True)
     search = request.GET.get("search", "").strip()
     location = request.GET.get("location", "").strip()
     price_filter = request.GET.get("price", "").strip()
 
     if search:
         listings = listings.filter(
-            Q(title__icontains=search)
+            Q(house_name__icontains=search)
             | Q(description__icontains=search)
-            | Q(location__icontains=search)
+            | Q(address__icontains=search)
         )
 
     if location:
-        listings = listings.filter(location__icontains=location)
+        listings = listings.filter(address__icontains=location)
 
     if price_filter:
         try:
@@ -117,9 +117,9 @@ def dashboard(request):
             messages.error(request, "Invalid search keyword.")
 
     locations = (
-        Listing.objects.filter(is_active=True)
-        .order_by("location")
-        .values_list("location", flat=True)
+        BoardingHouse.objects.filter(is_active=True)
+        .order_by("address")
+        .values_list("address", flat=True)
         .distinct()
     )
 
@@ -134,5 +134,5 @@ def dashboard(request):
 
 @login_required
 def listing_detail(request, pk):
-    listing = get_object_or_404(Listing, pk=pk, is_active=True)
+    listing = get_object_or_404(BoardingHouse, pk=pk, is_active=True)
     return render(request, "listings/listing_detail.html", {"listing": listing})
