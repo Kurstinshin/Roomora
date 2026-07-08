@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+    <link rel="stylesheet" href="{% static 'css/listing_interfaces.css' %}">
     <style>
         .detail-page { max-width: 800px; margin: 48px auto; padding: 0 28px 80px; }
         .back-link {
@@ -79,6 +80,25 @@
                 </div>
                 <a href="{% url 'dashboard' %}" class="card-btn" style="max-width: 200px;">← Back to Dashboard</a>
             </div>
+        </div>
+        <div style="max-width:800px;margin:28px auto;">
+            {% if messages %}
+            <div class="messages-container">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if user.is_authenticated %}
+            <div class="interface-row">
+                {% include 'listings/partials/_reservation_form.html' %}
+                {% include 'listings/partials/_inquiry_form.html' %}
+                {% include 'listings/partials/_review_form.html' %}
+            </div>
+            {% else %}
+            <p style="margin-top:18px;">Please <a href="{% url 'login' %}">login</a> to reserve, inquire, or review.</p>
+            {% endif %}
         </div>
     </div>
 

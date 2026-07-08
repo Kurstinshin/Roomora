@@ -1,0 +1,47 @@
+{% load static %}
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Landlord Dashboard — Roomora</title>
+  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+  <link rel="stylesheet" href="{% static 'css/listing_interfaces.css' %}">
+  <style>
+    .house-row{display:flex;justify-content:space-between;align-items:center;padding:12px;border-bottom:1px solid #eef2ff}
+    .house-info{display:flex;gap:12px;align-items:center}
+    .house-actions form{display:inline}
+  </style>
+</head>
+<body>
+  <nav class="navbar"><div class="navbar-inner"><a href="{% url 'dashboard' %}" class="navbar-brand">🏠 Roomora</a><div class="navbar-right"><a href="{% url 'logout' %}">Logout</a></div></div></nav>
+  <main style="max-width:960px;margin:28px auto;padding:0 16px;">
+    <h1>Landlord Dashboard</h1>
+    <p>Manage your boarding houses, view reservations, inquiries and reviews.</p>
+
+    {% if houses %}
+      <div style="margin-top:18px;border:1px solid #eef2ff;border-radius:8px;overflow:hidden;">
+        {% for item in houses %}
+          <div class="house-row">
+            <div class="house-info">
+              <img src="{{ item.house.image_url }}" alt="" style="width:72px;height:56px;object-fit:cover;border-radius:8px;">
+              <div>
+                <strong>{{ item.house.house_name }}</strong>
+                <div style="font-size:0.95rem;color:#6b7280">{{ item.house.address }}</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:center">
+              <div style="text-align:center"><div style="font-weight:700">{{ item.reservations }}</div><div style="font-size:0.85rem;color:#6b7280">reservations</div></div>
+              <div style="text-align:center"><div style="font-weight:700">{{ item.inquiries }}</div><div style="font-size:0.85rem;color:#6b7280">inquiries</div></div>
+              <div style="text-align:center"><div style="font-weight:700">{{ item.reviews }}</div><div style="font-size:0.85rem;color:#6b7280">reviews</div></div>
+              <a href="{% url 'listing_detail' item.house.pk %}" class="card-btn">View</a>
+              <form method="post" action="{% url 'toggle_house_availability' item.house.pk %}">{% csrf_token %}<button class="card-btn" type="submit">Toggle Availability</button></form>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p>No boarding houses assigned to you as landlord yet.</p>
+    {% endif %}
+  </main>
+</body>
+</html>

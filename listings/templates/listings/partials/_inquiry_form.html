@@ -1,0 +1,9 @@
+<div class="interface-card">
+    <h3 class="interface-title">Send Inquiry</h3>
+    <form method="post" action="{% url 'send_inquiry' listing.pk %}" class="interface-form">
+        {% csrf_token %}
+        <label for="id_message">Message</label>
+        {{ inquiry_form.message }}
+        <button type="submit" class="interface-btn">Send Inquiry</button>
+    </form>
+</div>

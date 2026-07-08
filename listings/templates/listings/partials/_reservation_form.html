@@ -1,0 +1,9 @@
+<div class="interface-card">
+    <h3 class="interface-title">Reserve</h3>
+    <form method="post" action="{% url 'make_reservation' listing.pk %}" class="interface-form">
+        {% csrf_token %}
+        <label for="id_check_in_date">Check-in date</label>
+        {{ reservation_form.check_in_date }}
+        <button type="submit" class="interface-btn">Reserve Now</button>
+    </form>
+</div>

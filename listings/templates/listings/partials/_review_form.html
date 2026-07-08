@@ -1,0 +1,11 @@
+<div class="interface-card">
+    <h3 class="interface-title">Write a Review</h3>
+    <form method="post" action="{% url 'submit_review' listing.pk %}" class="interface-form">
+        {% csrf_token %}
+        <label for="id_rating">Rating (1-5)</label>
+        {{ review_form.rating }}
+        <label for="id_comment">Comment</label>
+        {{ review_form.comment }}
+        <button type="submit" class="interface-btn">Submit Review</button>
+    </form>
+</div>
