@@ -1,47 +1,620 @@
-{% load static %}
-<!doctype html>
-<html>
+{% load static humanize %}
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Landlord Dashboard — Roomora</title>
-  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
-  <link rel="stylesheet" href="{% static 'css/listing_interfaces.css' %}">
-  <style>
-    .house-row{display:flex;justify-content:space-between;align-items:center;padding:12px;border-bottom:1px solid #eef2ff}
-    .house-info{display:flex;gap:12px;align-items:center}
-    .house-actions form{display:inline}
-  </style>
+  <meta name="description" content="Manage your properties, track reservations, respond to inquiries, and message tenants from your Roomora landlord dashboard.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/landlord_dashboard.css' %}">
 </head>
 <body>
-  <nav class="navbar"><div class="navbar-inner"><a href="{% url 'dashboard' %}" class="navbar-brand">🏠 Roomora</a><div class="navbar-right"><a href="{% url 'logout' %}">Logout</a></div></div></nav>
-  <main style="max-width:960px;margin:28px auto;padding:0 16px;">
-    <h1>Landlord Dashboard</h1>
-    <p>Manage your boarding houses, view reservations, inquiries and reviews.</p>
 
-    {% if houses %}
-      <div style="margin-top:18px;border:1px solid #eef2ff;border-radius:8px;overflow:hidden;">
-        {% for item in houses %}
-          <div class="house-row">
-            <div class="house-info">
-              <img src="{{ item.house.image_url }}" alt="" style="width:72px;height:56px;object-fit:cover;border-radius:8px;">
-              <div>
-                <strong>{{ item.house.house_name }}</strong>
-                <div style="font-size:0.95rem;color:#6b7280">{{ item.house.address }}</div>
+<div class="app-shell">
+
+  <!-- ══════════════════════════════
+       SIDEBAR
+  ══════════════════════════════ -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-icon">🏠</span>
+      <span class="brand-name">Roomora</span>
+      <span class="brand-badge">Landlord</span>
+    </div>
+
+    <div class="sidebar-user">
+      <div class="sidebar-avatar">{{ user.username|slice:":1"|upper }}</div>
+      <div class="sidebar-info">
+        <div class="sidebar-username">{{ user.username }}</div>
+        <span class="sidebar-role-pill">🏢 Landlord</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Management</div>
+
+      <button class="nav-item active" id="nav-properties" onclick="showTab('properties', this)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Properties
+        {% if houses %}<span class="nav-badge">{{ houses|length }}</span>{% endif %}
+      </button>
+
+      <button class="nav-item" id="nav-reservations" onclick="showTab('reservations', this)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Reservations
+        {% if all_reservations %}<span class="nav-badge">{{ all_reservations|length }}</span>{% endif %}
+      </button>
+
+      <button class="nav-item" id="nav-inquiries" onclick="showTab('inquiries', this)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Inquiries
+        {% if all_inquiries %}<span class="nav-badge {% if all_inquiries|length > 0 %}{% endif %}">{{ all_inquiries|length }}</span>{% endif %}
+      </button>
+
+      <button class="nav-item" id="nav-reviews" onclick="showTab('reviews', this)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        Reviews
+        {% if all_reviews %}<span class="nav-badge">{{ all_reviews|length }}</span>{% endif %}
+      </button>
+
+      <button class="nav-item" id="nav-messages" onclick="showTab('messages', this)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        Messages
+        {% if unread_count %}<span class="nav-badge danger">{{ unread_count }}</span>{% endif %}
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <a href="{% url 'dashboard' %}" style="color:#94a3b8;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Browse as Tenant
+      </a>
+      <a href="{% url 'logout' %}" class="danger" style="color:#94a3b8;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Logout
+      </a>
+    </div>
+  </aside>
+
+  <!-- ══════════════════════════════
+       MAIN AREA
+  ══════════════════════════════ -->
+  <div class="main-area">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-title" id="topbar-title">Properties</div>
+        <div class="topbar-subtitle" id="topbar-subtitle">Manage your boarding houses and rooms</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn-primary" id="open-publish-modal" onclick="document.getElementById('publishModal').classList.add('open')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New Property
+        </button>
+      </div>
+    </header>
+
+    <!-- Django messages -->
+    {% if messages %}
+    <div class="toast-container" id="toast-container">
+      {% for message in messages %}
+      <div class="toast {{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="tab-content">
+
+      <!-- ════════════════════════════════════
+           TAB 1 — PROPERTIES
+      ════════════════════════════════════ -->
+      <div class="tab-pane active" id="tab-properties">
+
+        <!-- Stat cards -->
+        <div class="stat-grid">
+          <div class="stat-card purple">
+            <div class="stat-icon">🏠</div>
+            <div class="stat-value">{{ houses|length }}</div>
+            <div class="stat-label">Properties</div>
+          </div>
+          <div class="stat-card amber">
+            <div class="stat-icon">📅</div>
+            <div class="stat-value">{{ all_reservations|length }}</div>
+            <div class="stat-label">Total Reservations</div>
+          </div>
+          <div class="stat-card green">
+            <div class="stat-icon">💬</div>
+            <div class="stat-value">{{ all_inquiries|length }}</div>
+            <div class="stat-label">Total Inquiries</div>
+          </div>
+          <div class="stat-card blue">
+            <div class="stat-icon">⭐</div>
+            <div class="stat-value">{{ all_reviews|length }}</div>
+            <div class="stat-label">Total Reviews</div>
+          </div>
+        </div>
+
+        <div class="section-header">
+          <div class="section-title">Your Properties</div>
+          <div class="section-meta">{{ houses|length }} listed</div>
+        </div>
+
+        {% if houses %}
+          {% for item in houses %}
+          <div class="property-card" id="property-{{ item.house.pk }}">
+
+            <!-- Property header -->
+            <div class="property-header">
+              <img src="{{ item.house.image_url }}" alt="{{ item.house.house_name }}" class="property-img">
+              <div class="property-info">
+                <div class="property-name">{{ item.house.house_name }}</div>
+                <div class="property-address">📍 {{ item.house.address }} · ₱{{ item.house.price|intcomma }}/mo</div>
+                <div class="property-pills">
+                  <span class="prop-pill {% if item.house.availability_status == 'Available' %}avail{% else %}unavail{% endif %}">
+                    {{ item.house.availability_status }}
+                  </span>
+                  <span class="prop-pill">{{ item.room_count }} room{{ item.room_count|pluralize }}</span>
+                  <span class="prop-pill">{{ item.reservation_count }} reservation{{ item.reservation_count|pluralize }}</span>
+                  <span class="prop-pill">{{ item.inquiry_count }} inquir{{ item.inquiry_count|pluralize:"y,ies" }}</span>
+                </div>
+              </div>
+              <div class="property-actions">
+                <a href="{% url 'listing_detail' item.house.pk %}" class="btn-ghost" style="font-size:0.8rem;padding:7px 14px;">View Public Page</a>
+                <form method="post" action="{% url 'toggle_house_availability' item.house.pk %}">
+                  {% csrf_token %}
+                  <button type="submit" class="btn-sm {% if item.house.availability_status == 'Available' %}danger{% else %}success{% endif %}">
+                    {% if item.house.availability_status == 'Available' %}Set Unavailable{% else %}Set Available{% endif %}
+                  </button>
+                </form>
               </div>
             </div>
-            <div style="display:flex;gap:12px;align-items:center">
-              <div style="text-align:center"><div style="font-weight:700">{{ item.reservations }}</div><div style="font-size:0.85rem;color:#6b7280">reservations</div></div>
-              <div style="text-align:center"><div style="font-weight:700">{{ item.inquiries }}</div><div style="font-size:0.85rem;color:#6b7280">inquiries</div></div>
-              <div style="text-align:center"><div style="font-weight:700">{{ item.reviews }}</div><div style="font-size:0.85rem;color:#6b7280">reviews</div></div>
-              <a href="{% url 'listing_detail' item.house.pk %}" class="card-btn">View</a>
-              <form method="post" action="{% url 'toggle_house_availability' item.house.pk %}">{% csrf_token %}<button class="card-btn" type="submit">Toggle Availability</button></form>
+
+            <!-- Rooms section -->
+            <div class="property-body">
+              <div class="property-section-title">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+                Rooms ({{ item.room_count }})
+              </div>
+
+              {% if item.rooms %}
+              <div class="rooms-grid">
+                {% for room in item.rooms %}
+                <div class="room-chip">
+                  <div class="room-chip-name">Room {{ room.room_number }}</div>
+                  <div class="room-chip-meta">{{ room.room_type|capfirst }} · {{ room.capacity }} pax · ₱{{ room.price|intcomma }}/mo</div>
+                  <div style="margin-top:5px;">
+                    <span class="status-pill {% if room.availability_status == 'Available' %}confirmed{% else %}cancelled{% endif %}" style="font-size:0.65rem;">
+                      {{ room.availability_status }}
+                    </span>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+              {% endif %}
+
+              <!-- Add room toggle -->
+              <button class="add-room-toggle" onclick="toggleAddRoom('{{ item.house.pk }}')" id="add-room-toggle-{{ item.house.pk }}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add a Room
+              </button>
+
+              <div class="add-room-form" id="add-room-form-{{ item.house.pk }}">
+                <form method="post" action="{% url 'add_room' item.house.pk %}">
+                  {% csrf_token %}
+                  <div class="form-grid">
+                    <div class="form-group">
+                      <label>Room Number</label>
+                      {{ item.room_form.room_number }}
+                    </div>
+                    <div class="form-group">
+                      <label>Type</label>
+                      {{ item.room_form.room_type }}
+                    </div>
+                    <div class="form-group">
+                      <label>Capacity</label>
+                      {{ item.room_form.capacity }}
+                    </div>
+                    <div class="form-group">
+                      <label>Price (₱/mo)</label>
+                      {{ item.room_form.price }}
+                    </div>
+                    <div class="form-group">
+                      <label>Availability</label>
+                      {{ item.room_form.availability_status }}
+                    </div>
+                  </div>
+                  <div style="display:flex;gap:8px;">
+                    <button type="submit" class="btn-sm primary" style="padding:8px 16px;">Save Room</button>
+                    <button type="button" class="btn-sm danger" onclick="toggleAddRoom('{{ item.house.pk }}')">Cancel</button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
-        {% endfor %}
+          {% endfor %}
+        {% else %}
+          <div class="empty-state">
+            <div class="empty-icon">🏗️</div>
+            <h3>No properties yet</h3>
+            <p>Click "New Property" to publish your first boarding house</p>
+          </div>
+        {% endif %}
       </div>
-    {% else %}
-      <p>No boarding houses assigned to you as landlord yet.</p>
-    {% endif %}
-  </main>
+
+      <!-- ════════════════════════════════════
+           TAB 2 — RESERVATIONS & BOOKINGS
+      ════════════════════════════════════ -->
+      <div class="tab-pane" id="tab-reservations">
+        <div class="section-header">
+          <div class="section-title">Reservations &amp; Bookings</div>
+          <div class="section-meta">{{ all_reservations|length }} total</div>
+        </div>
+
+        {% if all_reservations %}
+        <div class="activity-list">
+          {% for res in all_reservations %}
+          <div class="activity-card" id="res-{{ res.pk }}">
+            <div class="activity-main">
+              <div class="activity-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                {{ res.user.username }} — {{ res.room.boarding_house.house_name }}, Room {{ res.room.room_number }}
+                {% if res.booking_type == 'booking' %}
+                  <span style="font-size:0.68rem;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(124,58,237,0.15);color:#a78bfa;border:1px solid rgba(124,58,237,0.3);">🚀 Booking</span>
+                {% else %}
+                  <span style="font-size:0.68rem;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(16,185,129,0.15);color:var(--success);border:1px solid rgba(16,185,129,0.3);">📋 Reservation</span>
+                {% endif %}
+              </div>
+              <div class="activity-meta">
+                {% if res.booking_type == 'booking' %}
+                  📅 Check-in: {{ res.check_in_date }}
+                  {% if res.check_out_date %}&nbsp;·&nbsp;🔚 Check-out: {{ res.check_out_date }}{% endif %}
+                  {% if res.duration_days %}&nbsp;·&nbsp;⏱ {{ res.duration_days }} days{% endif %}
+                  {% if res.computed_total %}&nbsp;·&nbsp;💰 ~₱{{ res.computed_total|intcomma }}{% endif %}
+                {% else %}
+                  📅 Move-in: {{ res.check_in_date }}&nbsp;·&nbsp;🔄 Month-to-month
+                {% endif %}
+                &nbsp;·&nbsp;🛏 {{ res.room.room_type|capfirst }} · ₱{{ res.room.price|intcomma }}/mo
+                &nbsp;·&nbsp;Submitted: {{ res.reservation_date }}
+              </div>
+              {% if res.notes %}
+              <div style="margin-top:6px;font-size:0.8rem;color:var(--text-dim);font-style:italic;">
+                📝 "{{ res.notes|truncatechars:120 }}"
+              </div>
+              {% endif %}
+            </div>
+            <div class="activity-actions">
+              <span class="status-pill {{ res.status|lower }}">{{ res.status }}</span>
+              {% if res.status == "Pending" %}
+              <form method="post" action="{% url 'update_reservation_status' res.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="status" value="Confirmed">
+                <button type="submit" class="btn-sm success" id="confirm-res-{{ res.pk }}">✓ Confirm</button>
+              </form>
+              <form method="post" action="{% url 'update_reservation_status' res.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="status" value="Cancelled">
+                <button type="submit" class="btn-sm danger" id="cancel-res-{{ res.pk }}">✗ Cancel</button>
+              </form>
+              {% elif res.status == "Confirmed" %}
+              <form method="post" action="{% url 'update_reservation_status' res.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="status" value="Completed">
+                <button type="submit" class="btn-sm primary" id="complete-res-{{ res.pk }}">✅ Mark Complete</button>
+              </form>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+          <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <h3>No reservations or bookings yet</h3>
+            <p>Tenant reservations and bookings will appear here once submitted</p>
+          </div>
+        {% endif %}
+      </div>
+
+
+      <!-- ════════════════════════════════════
+           TAB 3 — INQUIRIES
+      ════════════════════════════════════ -->
+      <div class="tab-pane" id="tab-inquiries">
+        <div class="section-header">
+          <div class="section-title">All Inquiries</div>
+          <div class="section-meta">{{ all_inquiries|length }} total</div>
+        </div>
+
+        {% if all_inquiries %}
+        <div class="activity-list">
+          {% for inq in all_inquiries %}
+          <div class="activity-card" style="flex-direction:column;align-items:stretch;" id="inq-{{ inq.pk }}">
+            <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
+              <div class="activity-main">
+                <div class="activity-title">{{ inq.user.username }} — {{ inq.boarding_house.house_name }}</div>
+                <div class="activity-meta">🕐 {{ inq.date_sent|date:"M d, Y H:i" }}</div>
+              </div>
+              <div class="activity-actions">
+                <span class="status-pill {{ inq.status|lower }}">{{ inq.status }}</span>
+                {% if inq.status != "Responded" and inq.status != "Closed" %}
+                <button class="btn-sm primary" onclick="toggleReply('{{ inq.pk }}')" id="reply-toggle-{{ inq.pk }}">
+                  💬 Reply
+                </button>
+                {% endif %}
+              </div>
+            </div>
+
+            <div style="margin-top:10px;padding:12px;background:var(--surface2);border-radius:8px;font-size:0.875rem;color:var(--text-muted);line-height:1.6;">
+              {{ inq.message }}
+            </div>
+
+            <!-- Inline reply form -->
+            <div class="reply-area" id="reply-area-{{ inq.pk }}">
+              <form method="post" action="{% url 'reply_inquiry' inq.pk %}">
+                {% csrf_token %}
+                <textarea name="reply" placeholder="Type your reply to {{ inq.user.username }}…" id="reply-{{ inq.pk }}"></textarea>
+                <div class="reply-actions">
+                  <button type="submit" class="btn-sm success" id="send-reply-{{ inq.pk }}">Send Reply</button>
+                  <button type="button" class="btn-sm danger" onclick="toggleReply('{{ inq.pk }}')">Cancel</button>
+                </div>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+          <div class="empty-state">
+            <div class="empty-icon">💬</div>
+            <h3>No inquiries yet</h3>
+            <p>When tenants send questions about your properties, they appear here</p>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- ════════════════════════════════════
+           TAB 4 — REVIEWS
+      ════════════════════════════════════ -->
+      <div class="tab-pane" id="tab-reviews">
+        <div class="section-header">
+          <div class="section-title">Tenant Reviews</div>
+          <div class="section-meta">{{ all_reviews|length }} review{{ all_reviews|length|pluralize }}</div>
+        </div>
+
+        {% if all_reviews %}
+          {% for rev in all_reviews %}
+          <div class="review-card" id="review-{{ rev.pk }}">
+            <div class="review-header">
+              <div>
+                <div class="review-author">{{ rev.user.username }}</div>
+                <div class="review-house">🏠 {{ rev.boarding_house.house_name }}</div>
+              </div>
+              <div style="text-align:right;">
+                <div class="stars">
+                  {% for i in "12345" %}
+                    {% if forloop.counter <= rev.rating %}⭐{% else %}<span class="empty">☆</span>{% endif %}
+                  {% endfor %}
+                </div>
+                <div class="review-date">{{ rev.review_date|date:"M d, Y" }}</div>
+              </div>
+            </div>
+            {% if rev.comment %}
+            <div class="review-body">{{ rev.comment }}</div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state">
+            <div class="empty-icon">⭐</div>
+            <h3>No reviews yet</h3>
+            <p>Tenant reviews of your properties will appear here</p>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- ════════════════════════════════════
+           TAB 5 — MESSAGES
+      ════════════════════════════════════ -->
+      <div class="tab-pane" id="tab-messages">
+        <div class="section-header">
+          <div class="section-title">Inbox</div>
+          <div class="section-meta">
+            {% if unread_count %}{{ unread_count }} unread{% else %}All read{% endif %}
+          </div>
+        </div>
+
+        {% if inbox_messages %}
+          {% for msg in inbox_messages %}
+          <div class="message-card {% if not msg.is_read %}unread{% endif %}" id="msg-{{ msg.pk }}">
+            <div class="message-header">
+              <div class="message-from">
+                {% if not msg.is_read %}<span class="unread-dot"></span>{% endif %}
+                {{ msg.sender.username }}
+                {% if msg.boarding_house %}
+                  <span style="font-weight:400;color:var(--text-dim);font-size:0.78rem;">re: {{ msg.boarding_house.house_name }}</span>
+                {% endif %}
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span class="message-time">{{ msg.sent_at|date:"M d, Y H:i" }}</span>
+                {% if not msg.is_read %}
+                <a href="{% url 'mark_message_read' msg.pk %}" style="font-size:0.72rem;color:var(--text-dim);text-decoration:underline;">Mark read</a>
+                {% endif %}
+              </div>
+            </div>
+            {% if msg.subject %}
+            <div class="message-subject">📌 {{ msg.subject }}</div>
+            {% endif %}
+            <div class="message-body">{{ msg.body }}</div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <h3>No messages yet</h3>
+            <p>Messages from tenants will appear here</p>
+          </div>
+        {% endif %}
+      </div>
+
+    </div><!-- /tab-content -->
+  </div><!-- /main-area -->
+</div><!-- /app-shell -->
+
+<!-- ════════════════════════════════════
+     PUBLISH PROPERTY MODAL
+════════════════════════════════════ -->
+<div class="modal-overlay" id="publishModal">
+  <div class="modal" style="position:relative;">
+    <button class="modal-close" onclick="document.getElementById('publishModal').classList.remove('open')" id="close-publish-modal">✕</button>
+    <div class="modal-title">📢 Publish New Property</div>
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <input type="hidden" name="publish_house" value="1">
+      <div class="publish-form-grid">
+        <div class="form-group">
+          <label>House Name</label>
+          {{ house_form.house_name }}
+        </div>
+        <div class="form-group">
+          <label>Address</label>
+          {{ house_form.address }}
+        </div>
+        <div class="form-group">
+          <label>Monthly Price (₱)</label>
+          {{ house_form.price }}
+        </div>
+        <div class="form-group">
+          <label>Property Photo</label>
+          <div class="file-upload-area" id="file-upload-area" onclick="document.getElementById('id_image').click()">
+            <div class="file-upload-icon">📷</div>
+            <div class="file-upload-text">Click to upload a photo</div>
+            <div class="file-upload-hint">JPG, PNG, WEBP — max 5 MB</div>
+            {{ house_form.image }}
+          </div>
+          <div class="file-name-display" id="file-name-display"></div>
+        </div>
+        <div class="form-group full-width">
+          <label>Description</label>
+          {{ house_form.description }}
+        </div>
+      </div>
+      <button type="submit" class="btn-primary" style="width:100%;justify-content:center;" id="submit-publish">
+        🚀 Publish Boarding House
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- Style form inputs inside modal / add-room forms -->
+<style>
+  input[type="text"], input[type="number"], input[type="url"], textarea, select {
+    background: var(--surface2) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text-main) !important;
+    border-radius: var(--radius-sm) !important;
+    padding: 9px 12px !important;
+    font-size: 0.875rem !important;
+    width: 100% !important;
+    outline: none !important;
+    font-family: inherit !important;
+    transition: border-color 0.2s !important;
+    box-sizing: border-box !important;
+  }
+  input:focus, textarea:focus, select:focus { border-color: var(--primary) !important; }
+  textarea { min-height: 90px; resize: vertical; }
+
+  /* File upload area */
+  .file-upload-area {
+    border: 2px dashed rgba(124,58,237,0.35);
+    border-radius: var(--radius-sm);
+    padding: 22px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    background: var(--surface2);
+    position: relative;
+  }
+  .file-upload-area:hover {
+    border-color: var(--primary);
+    background: rgba(124,58,237,0.06);
+  }
+  .file-upload-area input[type="file"] {
+    position: absolute !important;
+    inset: 0 !important;
+    opacity: 0 !important;
+    cursor: pointer !important;
+    width: 100% !important;
+    height: 100% !important;
+    padding: 0 !important;
+    border: none !important;
+  }
+  .file-upload-icon { font-size: 1.8rem; margin-bottom: 6px; }
+  .file-upload-text { font-size: 0.875rem; font-weight: 600; color: var(--text-main); margin-bottom: 3px; }
+  .file-upload-hint { font-size: 0.75rem; color: var(--text-dim); }
+  .file-name-display { margin-top: 6px; font-size: 0.78rem; color: #a78bfa; min-height: 18px; }
+</style>
+
+<script>
+  const TABS = ['properties', 'reservations', 'inquiries', 'reviews', 'messages'];
+  const TITLES = {
+    properties:   ['Properties', 'Manage your boarding houses and rooms'],
+    reservations: ['Reservations', 'Review and update tenant reservation requests'],
+    inquiries:    ['Inquiries', 'Read and reply to tenant questions'],
+    reviews:      ['Reviews', 'See what tenants say about your properties'],
+    messages:     ['Messages', 'Your message inbox from tenants'],
+  };
+
+  function showTab(name, btn) {
+    TABS.forEach(t => {
+      document.getElementById('tab-' + t).classList.remove('active');
+      document.getElementById('nav-' + t).classList.remove('active');
+    });
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+    document.getElementById('topbar-title').textContent = TITLES[name][0];
+    document.getElementById('topbar-subtitle').textContent = TITLES[name][1];
+    // Hide "New Property" button unless on properties tab
+    document.getElementById('open-publish-modal').style.display = name === 'properties' ? 'flex' : 'none';
+  }
+
+  function toggleAddRoom(houseId) {
+    const form = document.getElementById('add-room-form-' + houseId);
+    form.classList.toggle('open');
+  }
+
+  function toggleReply(inquiryId) {
+    const area = document.getElementById('reply-area-' + inquiryId);
+    area.classList.toggle('open');
+  }
+
+  // Auto-dismiss toasts after 4s
+  setTimeout(() => {
+    const tc = document.getElementById('toast-container');
+    if (tc) { tc.style.opacity = '0'; tc.style.transition = 'opacity 0.5s'; setTimeout(() => tc.remove(), 500); }
+  }, 4000);
+
+  // Close modal on outside click
+  document.getElementById('publishModal').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('open');
+  });
+
+  // Show selected filename in upload area
+  document.addEventListener('change', function(e) {
+    if (e.target && e.target.id === 'id_image') {
+      const display = document.getElementById('file-name-display');
+      const area    = document.getElementById('file-upload-area');
+      if (e.target.files && e.target.files[0]) {
+        display.textContent = '📎 ' + e.target.files[0].name;
+        area.style.borderColor = 'var(--success)';
+      } else {
+        display.textContent = '';
+        area.style.borderColor = '';
+      }
+    }
+  });
+</script>
+
 </body>
 </html>

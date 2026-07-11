@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from django.db.models import Q
 
 from .forms import LoginForm, RegisterForm
-from listings.models import BoardingHouse
+from listings.models import BoardingHouse, Inquiry, Message, Reservation
 
 
 def home(request):
@@ -76,7 +76,7 @@ def _seed_default_listings():
                 address="Cebu City",
                 price=4500,
                 description="Comfortable boarding house with fast Wi-Fi and easy access to transport.",
-                image="https://via.placeholder.com/640x360?text=Room+A",
+                image="images.jpg",
                 is_active=True,
             ),
             BoardingHouse(
@@ -92,6 +92,13 @@ def _seed_default_listings():
 
 @login_required
 def dashboard(request):
+    # Landlords go to their own dashboard
+    try:
+        if request.user.profile.role == "landlord":
+            return redirect("landlord_dashboard")
+    except Exception:
+        pass
+
     _seed_default_listings()
 
     listings = BoardingHouse.objects.filter(is_active=True)
@@ -114,7 +121,7 @@ def dashboard(request):
             max_price = int(price_filter)
             listings = listings.filter(price__lte=max_price)
         except ValueError:
-            messages.error(request, "Invalid search keyword.")
+            messages.error(request, "Invalid price filter.")
 
     locations = (
         BoardingHouse.objects.filter(is_active=True)
@@ -123,12 +130,31 @@ def dashboard(request):
         .distinct()
     )
 
+    # Tenant-specific data
+    my_reservations = Reservation.objects.filter(
+        user=request.user
+    ).select_related("room", "room__boarding_house").order_by("-reservation_date")
+
+    my_inquiries = Inquiry.objects.filter(
+        user=request.user
+    ).select_related("boarding_house").order_by("-date_sent")
+
+    inbox_messages = Message.objects.filter(
+        recipient=request.user
+    ).select_related("sender", "boarding_house").order_by("-sent_at")
+
+    unread_count = inbox_messages.filter(is_read=False).count()
+
     return render(request, "users/dashboard.html", {
         "listings": listings,
         "search": search,
         "location": location,
         "price_filter": price_filter,
         "locations": locations,
+        "my_reservations": my_reservations,
+        "my_inquiries": my_inquiries,
+        "inbox_messages": inbox_messages,
+        "unread_count": unread_count,
     })
 
 

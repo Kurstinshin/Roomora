@@ -2,109 +2,608 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ listing.title }} — Roomora</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
-    <link rel="stylesheet" href="{% static 'css/listing_interfaces.css' %}">
-    <style>
-        .detail-page { max-width: 800px; margin: 48px auto; padding: 0 28px 80px; }
-        .back-link {
-            display: inline-flex; align-items: center; gap: 6px;
-            color: var(--text-muted); font-size: 0.875rem; font-weight: 500;
-            text-decoration: none; margin-bottom: 28px;
-            transition: color 0.2s;
-        }
-        .back-link:hover { color: var(--primary); }
-        .detail-card {
-            background: var(--surface); border-radius: 18px;
-            box-shadow: 0 8px 32px rgba(0,0,0,.1);
-            overflow: hidden; border: 1px solid var(--border);
-        }
-        .detail-image { width: 100%; height: 360px; object-fit: cover; display: block; }
-        .detail-body { padding: 36px; }
-        .detail-title { font-size: 1.75rem; font-weight: 800; color: var(--text-main); margin-bottom: 16px; letter-spacing: -0.5px; }
-        .detail-meta { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 28px; }
-        .meta-chip {
-            display: flex; align-items: center; gap: 8px;
-            background: #f1f5f9; border-radius: 8px; padding: 10px 16px;
-            font-size: 0.9rem; font-weight: 600; color: var(--text-main);
-        }
-        .meta-chip.price { background: #ede9fe; color: var(--primary-dark); }
-        .detail-description { font-size: 1rem; color: var(--text-muted); line-height: 1.8; margin-bottom: 32px; }
-        .detail-description strong { color: var(--text-main); display: block; margin-bottom: 10px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ listing.title }} — Roomora</title>
+  <meta name="description" content="{{ listing.description|truncatechars:160 }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/tenant_dashboard.css' %}">
+  <style>
+    body { background: #0f0f1a; }
+    .detail-page { max-width: 900px; margin: 0 auto; padding: 32px 24px 80px; }
+
+    /* ── Back link ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: var(--text-muted); font-size: 0.875rem; font-weight: 500;
+      text-decoration: none; margin-bottom: 24px; transition: color 0.2s;
+    }
+    .back-link:hover { color: var(--primary); }
+
+    /* ── Property card ── */
+    .detail-card {
+      background: var(--surface); border-radius: var(--radius);
+      border: 1px solid var(--border); overflow: hidden;
+      margin-bottom: 24px; box-shadow: 0 8px 32px rgba(0,0,0,.4);
+    }
+    .detail-image { width: 100%; height: 340px; object-fit: cover; display: block; }
+    .detail-body  { padding: 32px; }
+    .detail-title { font-size: 1.6rem; font-weight: 800; margin-bottom: 16px; }
+    .detail-meta  { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 22px; }
+    .meta-chip {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 8px 14px;
+      font-size: 0.875rem; font-weight: 600;
+    }
+    .meta-chip.price  { background: rgba(124,58,237,0.12); border-color: rgba(124,58,237,0.25); color: #a78bfa; }
+    .meta-chip.avail  { background: rgba(16,185,129,0.1);  color: var(--success); }
+    .meta-chip.unavail{ background: rgba(239,68,68,0.1);   color: var(--danger); }
+    .detail-desc { font-size: 0.95rem; color: var(--text-muted); line-height: 1.8; }
+
+    /* ── Rating ── */
+    .rating-row { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+    .stars-display { color: #f59e0b; font-size: 1.1rem; letter-spacing: 2px; }
+
+    /* ── Rooms grid ── */
+    .rooms-section { margin-bottom: 28px; }
+    .section-heading {
+      font-size: 1rem; font-weight: 700; margin-bottom: 14px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .rooms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+    .room-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 14px; transition: border-color 0.2s;
+    }
+    .room-card:hover { border-color: rgba(124,58,237,0.35); }
+    .room-number { font-size: 0.95rem; font-weight: 700; margin-bottom: 6px; }
+    .room-meta   { font-size: 0.8rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 8px; }
+    .room-price  { font-size: 0.9rem; font-weight: 700; color: #a78bfa; }
+    .avail-badge {
+      display: inline-block; font-size: 0.68rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.5px;
+      padding: 3px 8px; border-radius: 999px; margin-top: 6px;
+    }
+    .avail-badge.avail   { background: rgba(16,185,129,0.15); color: var(--success); }
+    .avail-badge.unavail { background: rgba(239,68,68,0.15);  color: var(--danger); }
+
+    /* ── Action split ── */
+    .action-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 32px;
+    }
+    @media (max-width: 640px) { .action-split { grid-template-columns: 1fr; } }
+
+    /* Reserve card */
+    .action-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+    }
+    .action-card-header {
+      padding: 16px 20px; display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .action-card-header.reserve { background: rgba(16,185,129,0.06); }
+    .action-card-header.book    { background: rgba(124,58,237,0.06); }
+    .action-card-icon { font-size: 1.4rem; }
+    .action-card-title { font-size: 0.95rem; font-weight: 700; }
+    .action-card-sub   { font-size: 0.75rem; color: var(--text-muted); margin-top: 1px; }
+    .action-card-body  { padding: 20px; }
+
+    /* Form fields */
+    .form-field { margin-bottom: 14px; }
+    .form-field label {
+      display: block; font-size: 0.72rem; font-weight: 700;
+      color: var(--text-dim); margin-bottom: 5px;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .form-field input, .form-field textarea, .form-field select {
+      width: 100%; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      color: var(--text-main); padding: 10px 13px;
+      font-size: 0.875rem; outline: none; font-family: inherit;
+      transition: border-color 0.2s; box-sizing: border-box;
+    }
+    .form-field input:focus, .form-field textarea:focus, .form-field select:focus {
+      border-color: var(--primary);
+    }
+    .form-field textarea { resize: vertical; min-height: 70px; }
+
+    /* Room radio cards */
+    .room-radio-grid { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+    .room-radio-label {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--surface2); border: 2px solid var(--border);
+      border-radius: var(--radius-sm); padding: 10px 13px; cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .room-radio-label:has(input:checked) {
+      border-color: var(--primary);
+      background: rgba(124,58,237,0.07);
+    }
+    .room-radio-label:hover { border-color: rgba(124,58,237,0.35); }
+    .room-radio-label input[type="radio"] { accent-color: var(--primary); width: 14px; height: 14px; flex-shrink:0; }
+    .rl-info { flex: 1; }
+    .rl-name  { font-size: 0.85rem; font-weight: 700; }
+    .rl-meta  { font-size: 0.75rem; color: var(--text-muted); }
+    .rl-price { font-size: 0.85rem; font-weight: 700; color: #a78bfa; white-space: nowrap; }
+
+    /* Live price preview */
+    .price-preview {
+      background: rgba(124,58,237,0.07); border: 1px solid rgba(124,58,237,0.2);
+      border-radius: var(--radius-sm); padding: 12px 14px; margin: 12px 0;
+      display: none;
+    }
+    .price-preview-row {
+      display: flex; justify-content: space-between;
+      font-size: 0.82rem; padding: 3px 0;
+    }
+    .price-preview-row .lbl { color: var(--text-muted); }
+    .price-preview-row .val { font-weight: 600; }
+    .price-preview-row.total-row {
+      border-top: 1px solid rgba(124,58,237,0.2); margin-top: 8px; padding-top: 8px;
+      font-size: 0.9rem;
+    }
+    .price-preview-row.total-row .lbl { font-weight: 700; color: var(--text-main); }
+    .price-preview-row.total-row .val { font-weight: 800; color: #a78bfa; font-size: 1rem; }
+
+    /* Submit buttons */
+    .btn-reserve {
+      width: 100%; padding: 12px; border: none; border-radius: var(--radius-sm);
+      background: rgba(16,185,129,0.15); color: var(--success);
+      border: 1px solid rgba(16,185,129,0.35);
+      font-size: 0.9rem; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: background 0.2s, border-color 0.2s; font-family: inherit;
+    }
+    .btn-reserve:hover { background: rgba(16,185,129,0.25); border-color: var(--success); }
+    .btn-booknow {
+      width: 100%; padding: 12px; border: none; border-radius: var(--radius-sm);
+      background: linear-gradient(135deg, #7c3aed, #6d28d9);
+      color: #fff; font-size: 0.9rem; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: opacity 0.2s; font-family: inherit;
+    }
+    .btn-booknow:hover { opacity: 0.9; }
+
+    /* ── Other tabs (Inquire, Review) ── */
+    .extra-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-top: 32px; }
+    .extra-tab {
+      padding: 11px 18px; font-size: 0.875rem; font-weight: 600;
+      color: var(--text-muted); cursor: pointer;
+      border: none; background: none; border-bottom: 2px solid transparent;
+      transition: all 0.2s; margin-bottom: -1px; font-family: inherit;
+    }
+    .extra-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .extra-tab:hover:not(.active) { color: var(--text-main); }
+    .extra-panel { display: none; margin-top: 20px; }
+    .extra-panel.active { display: block; animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+    .form-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 22px;
+    }
+    .form-card h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 16px; }
+
+    /* Star picker */
+    .star-picker { display: flex; flex-direction: row-reverse; gap: 6px; }
+    .star-picker input[type="radio"] { display: none; }
+    .star-picker label {
+      font-size: 1.6rem; cursor: pointer; color: var(--text-dim);
+      transition: color 0.15s; font-weight: 400;
+    }
+    .star-picker input[type="radio"]:checked ~ label,
+    .star-picker label:hover,
+    .star-picker label:hover ~ label { color: #f59e0b; }
+
+    /* ── Owner notice ── */
+    .owner-notice {
+      background: rgba(124,58,237,0.08); border: 1px solid rgba(124,58,237,0.25);
+      border-radius: var(--radius); padding: 18px 20px; margin-top: 28px;
+      color: #a78bfa; font-size: 0.9rem; font-weight: 500;
+      display: flex; align-items: center; gap: 10px;
+    }
+
+    /* ── Toast ── */
+    .msg-toast {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 12px 16px;
+      margin-bottom: 14px; font-size: 0.875rem;
+    }
+    .msg-toast.success { border-left: 3px solid var(--success); }
+    .msg-toast.error   { border-left: 3px solid var(--danger); }
+
+    /* ── Navbar ── */
+    .navbar {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 0 32px; position: sticky; top: 0; z-index: 50;
+    }
+    .navbar-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      height: 60px; max-width: 900px; margin: 0 auto;
+    }
+    .navbar-brand {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 1.1rem; font-weight: 800; text-decoration: none; color: var(--text-main);
+    }
+    .navbar-right { display: flex; align-items: center; gap: 14px; }
+    .navbar-right a { font-size: 0.85rem; color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
+    .navbar-right a:hover { color: var(--text-main); }
+
+    /* ── No rooms warning ── */
+    .no-rooms-notice {
+      background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25);
+      border-radius: var(--radius-sm); padding: 14px 18px;
+      font-size: 0.875rem; color: #f59e0b;
+    }
+
+    /* ── Reviews ── */
+    .review-item {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 16px 18px; margin-bottom: 12px;
+    }
+    .review-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .review-author { font-size: 0.875rem; font-weight: 700; }
+    .review-stars  { color: #f59e0b; letter-spacing: 2px; font-size: 0.9rem; }
+    .review-comment{ font-size: 0.875rem; color: var(--text-muted); line-height: 1.6; }
+    .review-date   { font-size: 0.75rem; color: var(--text-dim); margin-top: 6px; }
+  </style>
 </head>
 <body>
 
-    <!-- NAVBAR -->
-    <nav class="navbar">
-        <div class="navbar-inner">
-            <a href="{% url 'dashboard' %}" class="navbar-brand">
-                <span class="brand-icon">🏠</span>
-                <span class="brand-name">Roomora</span>
-            </a>
-            <div class="navbar-right">
-                <a href="{% url 'logout' %}" class="logout-btn">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                    Logout
-                </a>
-            </div>
-        </div>
-    </nav>
-
-    <div class="detail-page">
-        <a href="{% url 'dashboard' %}" class="back-link">
-            ← Back to listings
-        </a>
-
-        <div class="detail-card">
-            <img src="{{ listing.image_url }}" alt="{{ listing.title }}" class="detail-image">
-            <div class="detail-body">
-                <h1 class="detail-title">{{ listing.title }}</h1>
-                <div class="detail-meta">
-                    <div class="meta-chip">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                        {{ listing.location }}
-                    </div>
-                    <div class="meta-chip price">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                        ₱{{ listing.price|intcomma }}/month
-                    </div>
-                </div>
-                <div class="detail-description">
-                    <strong>About this room</strong>
-                    {{ listing.description }}
-                </div>
-                <a href="{% url 'dashboard' %}" class="card-btn" style="max-width: 200px;">← Back to Dashboard</a>
-            </div>
-        </div>
-        <div style="max-width:800px;margin:28px auto;">
-            {% if messages %}
-            <div class="messages-container">
-                {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-                {% endfor %}
-            </div>
-            {% endif %}
-
-            {% if user.is_authenticated %}
-            <div class="interface-row">
-                {% include 'listings/partials/_reservation_form.html' %}
-                {% include 'listings/partials/_inquiry_form.html' %}
-                {% include 'listings/partials/_review_form.html' %}
-            </div>
-            {% else %}
-            <p style="margin-top:18px;">Please <a href="{% url 'login' %}">login</a> to reserve, inquire, or review.</p>
-            {% endif %}
-        </div>
+<!-- ── Navbar ── -->
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="{% url 'dashboard' %}" class="navbar-brand">🏠 Roomora</a>
+    <div class="navbar-right">
+      {% if user.is_authenticated %}
+        {% if user.profile.role == 'landlord' %}
+          <a href="{% url 'landlord_dashboard' %}">← My Dashboard</a>
+        {% else %}
+          <a href="{% url 'dashboard' %}">← Browse</a>
+        {% endif %}
+        <a href="{% url 'logout' %}" style="color:var(--danger);">Logout</a>
+      {% else %}
+        <a href="{% url 'login' %}">Login</a>
+        <a href="{% url 'register' %}" class="card-btn" style="padding:7px 16px;font-size:0.82rem;">Sign Up</a>
+      {% endif %}
     </div>
+  </div>
+</nav>
 
-    <footer class="footer">
-        <p>© 2026 Roomora. All rights reserved.</p>
-    </footer>
+<div class="detail-page">
+  <a href="{% url 'dashboard' %}" class="back-link">← Back to listings</a>
+
+  {% if messages %}
+    {% for message in messages %}
+    <div class="msg-toast {{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- ── Main property card ── -->
+  <div class="detail-card">
+    <img src="{{ listing.image_url }}" alt="{{ listing.title }}" class="detail-image">
+    <div class="detail-body">
+      <h1 class="detail-title">{{ listing.title }}</h1>
+
+      {% if avg_rating %}
+      <div class="rating-row">
+        <div class="stars-display">
+          {% for i in "12345" %}{% if forloop.counter <= avg_rating %}⭐{% else %}☆{% endif %}{% endfor %}
+        </div>
+        <span style="font-weight:700;">{{ avg_rating }}</span>
+        <span style="color:var(--text-muted);font-size:0.85rem;">({{ reviews|length }} review{{ reviews|length|pluralize }})</span>
+      </div>
+      {% endif %}
+
+      <div class="detail-meta">
+        <div class="meta-chip">📍 {{ listing.location }}</div>
+        <div class="meta-chip price">💰 ₱{{ listing.price|intcomma }}/month</div>
+        <div class="meta-chip {% if listing.availability_status == 'Available' %}avail{% else %}unavail{% endif %}">
+          {% if listing.availability_status == 'Available' %}✅{% else %}🔴{% endif %}
+          {{ listing.availability_status }}
+        </div>
+        {% if rooms %}
+        <div class="meta-chip">🛏 {{ rooms|length }} Room{{ rooms|length|pluralize }}</div>
+        {% endif %}
+      </div>
+
+      <p class="detail-desc">{{ listing.description }}</p>
+    </div>
+  </div>
+
+  <!-- ── Rooms grid ── -->
+  {% if rooms %}
+  <div class="rooms-section">
+    <div class="section-heading">🛏 Rooms ({{ rooms|length }})</div>
+    <div class="rooms-grid">
+      {% for room in rooms %}
+      <div class="room-card">
+        <div class="room-number">Room {{ room.room_number }}</div>
+        <div class="room-meta">
+          {{ room.room_type|capfirst }} · {{ room.capacity }} pax
+        </div>
+        <div class="room-price">₱{{ room.price|intcomma }}/mo</div>
+        <span class="avail-badge {% if room.availability_status == 'Available' %}avail{% else %}unavail{% endif %}">
+          {{ room.availability_status }}
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ══════════════════════════════════════
+       TENANT ACTIONS
+  ══════════════════════════════════════ -->
+  {% if user.is_authenticated %}
+    {% if is_owner %}
+      <div class="owner-notice">
+        🏢 You are the landlord of this property. Manage it from your
+        <a href="{% url 'landlord_dashboard' %}" style="color:#a78bfa;font-weight:700;text-decoration:underline;margin-left:4px;">Landlord Dashboard →</a>
+      </div>
+
+    {% else %}
+
+      <!-- ── Reserve / Book Now split ── -->
+      {% if available_rooms %}
+      <div class="action-split">
+
+        <!-- ┌─────────── RESERVE ───────────┐ -->
+        <div class="action-card">
+          <div class="action-card-header reserve">
+            <span class="action-card-icon">📋</span>
+            <div>
+              <div class="action-card-title">Reserve a Room</div>
+              <div class="action-card-sub">Hold a room · set your move-in date · month-to-month</div>
+            </div>
+          </div>
+          <div class="action-card-body">
+            <form method="post" action="{% url 'make_reservation' listing.pk %}" id="reserve-form">
+              {% csrf_token %}
+
+              <!-- Room selection -->
+              <div class="form-field">
+                <label>Choose Room</label>
+                <div class="room-radio-grid">
+                  {% for room in available_rooms %}
+                  <label class="room-radio-label">
+                    <input type="radio" name="room_id" value="{{ room.pk }}"
+                      {% if forloop.first %}checked{% endif %}>
+                    <div class="rl-info">
+                      <div class="rl-name">Room {{ room.room_number }}</div>
+                      <div class="rl-meta">{{ room.room_type|capfirst }} · {{ room.capacity }} pax</div>
+                    </div>
+                    <div class="rl-price">₱{{ room.price|intcomma }}/mo</div>
+                  </label>
+                  {% endfor %}
+                </div>
+              </div>
+
+              <!-- Move-in date -->
+              <div class="form-field">
+                <label>Intended Move-in Date</label>
+                <input type="date" name="move_in_date" id="reserve-movein"
+                  required min="{{ today }}">
+              </div>
+
+              <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:14px;line-height:1.5;">
+                📌 Reserving holds the room for you. The landlord will confirm your request. Billing is month-to-month from your move-in date.
+              </p>
+
+              <button type="submit" class="btn-reserve" id="submit-reserve">
+                📋 Reserve Room →
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- ┌─────────── BOOK NOW ───────────┐ -->
+        <div class="action-card">
+          <div class="action-card-header book">
+            <span class="action-card-icon">🚀</span>
+            <div>
+              <div class="action-card-title">Book Now</div>
+              <div class="action-card-sub">Fixed-period stay · choose check-in & check-out</div>
+            </div>
+          </div>
+          <div class="action-card-body">
+            <form method="post" action="{% url 'make_booking' listing.pk %}" id="booking-form">
+              {% csrf_token %}
+
+              <!-- Room selection -->
+              <div class="form-field">
+                <label>Choose Room</label>
+                <div class="room-radio-grid">
+                  {% for room in available_rooms %}
+                  <label class="room-radio-label" data-price="{{ room.price }}">
+                    <input type="radio" name="room_id" value="{{ room.pk }}"
+                      data-price="{{ room.price }}"
+                      {% if forloop.first %}checked{% endif %}
+                      onchange="updateBookingPrice({{ room.price }})">
+                    <div class="rl-info">
+                      <div class="rl-name">Room {{ room.room_number }}</div>
+                      <div class="rl-meta">{{ room.room_type|capfirst }} · {{ room.capacity }} pax</div>
+                    </div>
+                    <div class="rl-price">₱{{ room.price|intcomma }}/mo</div>
+                  </label>
+                  {% endfor %}
+                </div>
+              </div>
+
+              <!-- Date pickers -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div class="form-field">
+                  <label>Check-in</label>
+                  <input type="date" name="check_in_date" id="book-checkin"
+                    required min="{{ today }}" onchange="calcBookingTotal()">
+                </div>
+                <div class="form-field">
+                  <label>Check-out</label>
+                  <input type="date" name="check_out_date" id="book-checkout"
+                    required min="{{ today }}" onchange="calcBookingTotal()">
+                </div>
+              </div>
+
+              <!-- Live price preview -->
+              <div class="price-preview" id="price-preview">
+                <div class="price-preview-row">
+                  <span class="lbl">Duration</span>
+                  <span class="val" id="prev-duration">—</span>
+                </div>
+                <div class="price-preview-row">
+                  <span class="lbl">Room Rate</span>
+                  <span class="val" id="prev-rate">—</span>
+                </div>
+                <div class="price-preview-row total-row">
+                  <span class="lbl">Estimated Total</span>
+                  <span class="val" id="prev-total">—</span>
+                </div>
+              </div>
+
+              <!-- Notes -->
+              <div class="form-field">
+                <label>Special Requests <span style="font-weight:400;color:var(--text-dim);">(optional)</span></label>
+                <textarea name="notes" id="book-notes"
+                  placeholder="e.g. Arriving late evening, need extra bedding…"></textarea>
+              </div>
+
+              <button type="submit" class="btn-booknow" id="submit-booking">
+                🚀 Book Now →
+              </button>
+            </form>
+          </div>
+        </div>
+
+      </div><!-- /action-split -->
+      {% else %}
+        <div class="no-rooms-notice" style="margin-top:28px;">
+          ⚠️ All rooms are currently occupied. Please check back later or send an inquiry to the landlord.
+        </div>
+      {% endif %}
+
+      <!-- ── Inquire & Review tabs ── -->
+      <div class="extra-tabs">
+        <button class="extra-tab active" onclick="switchExtra('inquire', this)" id="xtab-inquire">💬 Send Inquiry</button>
+        <button class="extra-tab" onclick="switchExtra('review', this)" id="xtab-review">⭐ Write a Review</button>
+      </div>
+
+      <!-- Inquire panel -->
+      <div class="extra-panel active" id="xpanel-inquire">
+        <div class="form-card">
+          <h3>Ask the Landlord</h3>
+          <form method="post" action="{% url 'send_inquiry' listing.pk %}">
+            {% csrf_token %}
+            <div class="form-field">
+              <label>Your Question</label>
+              <textarea name="message" id="inquiry-msg"
+                placeholder="Ask about availability, rules, amenities…"></textarea>
+            </div>
+            <button type="submit" class="card-btn" id="submit-inquiry">Send Inquiry →</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Review panel -->
+      <div class="extra-panel" id="xpanel-review">
+        <div class="form-card">
+          <h3>Write a Review</h3>
+          <form method="post" action="{% url 'submit_review' listing.pk %}">
+            {% csrf_token %}
+            <div class="form-field">
+              <label>Your Rating</label>
+              <div class="star-picker">
+                <input type="radio" name="rating" id="s5" value="5"><label for="s5">★</label>
+                <input type="radio" name="rating" id="s4" value="4"><label for="s4">★</label>
+                <input type="radio" name="rating" id="s3" value="3" checked><label for="s3">★</label>
+                <input type="radio" name="rating" id="s2" value="2"><label for="s2">★</label>
+                <input type="radio" name="rating" id="s1" value="1"><label for="s1">★</label>
+              </div>
+            </div>
+            <div class="form-field">
+              <label>Comment <span style="font-weight:400;color:var(--text-dim);">(optional)</span></label>
+              <textarea name="comment" id="review-comment" placeholder="Share your experience…"></textarea>
+            </div>
+            <button type="submit" class="card-btn" id="submit-review">Submit Review →</button>
+          </form>
+        </div>
+      </div>
+
+    {% endif %}
+  {% else %}
+    <!-- Not logged in -->
+    <div style="margin-top:28px;padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);text-align:center;font-size:0.9rem;color:var(--text-muted);">
+      Please <a href="{% url 'login' %}" style="color:var(--primary);font-weight:600;">log in</a>
+      to reserve, book, inquire, or review this property.
+    </div>
+  {% endif %}
+
+  <!-- ── Tenant reviews ── -->
+  {% if reviews %}
+  <div style="margin-top:40px;">
+    <div class="section-heading">⭐ Tenant Reviews</div>
+    {% for rev in reviews %}
+    <div class="review-item">
+      <div class="review-header">
+        <span class="review-author">{{ rev.user.username }}</span>
+        <span class="review-stars">{% for i in "12345" %}{% if forloop.counter <= rev.rating %}⭐{% endif %}{% endfor %}</span>
+      </div>
+      {% if rev.comment %}<div class="review-comment">{{ rev.comment }}</div>{% endif %}
+      <div class="review-date">{{ rev.review_date|date:"M d, Y" }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div><!-- /detail-page -->
+
+<script>
+  /* ── Extra tabs (Inquire / Review) ── */
+  function switchExtra(name, btn) {
+    document.querySelectorAll('.extra-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.extra-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('xpanel-' + name).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  /* ── Book Now: live price calculator ── */
+  let bookingRoomPrice = 0;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const firstRadio = document.querySelector('#booking-form input[name="room_id"]:checked');
+    if (firstRadio) bookingRoomPrice = parseInt(firstRadio.dataset.price) || 0;
+  });
+
+  function updateBookingPrice(price) {
+    bookingRoomPrice = price;
+    calcBookingTotal();
+  }
+
+  function calcBookingTotal() {
+    const ci = document.getElementById('book-checkin');
+    const co = document.getElementById('book-checkout');
+    const preview = document.getElementById('price-preview');
+    if (!ci || !co) return;
+
+    if (ci.value) co.min = ci.value;  // keep checkout >= checkin
+
+    if (!ci.value || !co.value) { preview.style.display = 'none'; return; }
+
+    const days = Math.round((new Date(co.value) - new Date(ci.value)) / 86400000);
+    if (days <= 0) { preview.style.display = 'none'; return; }
+
+    const total = Math.round(bookingRoomPrice * (days / 30));
+    document.getElementById('prev-duration').textContent = days + ' day' + (days !== 1 ? 's' : '');
+    document.getElementById('prev-rate').textContent     = '₱' + bookingRoomPrice.toLocaleString() + '/mo';
+    document.getElementById('prev-total').textContent    = '₱' + total.toLocaleString();
+    preview.style.display = 'block';
+  }
+</script>
 
 </body>
 </html>
