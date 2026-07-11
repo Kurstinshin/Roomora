@@ -13,7 +13,7 @@ class BoardingHouse(models.Model):
     description = models.TextField(blank=True)
     price = models.PositiveIntegerField()
     availability_status = models.CharField(max_length=20, choices=AVAILABILITY_CHOICES, default="Available")
-    image = models.URLField(blank=True, default="img.jpg")
+    image = models.ImageField(upload_to='boarding_houses/', blank=True, null=True)
     is_active = models.BooleanField(default=True)
     users = models.ManyToManyField(settings.AUTH_USER_MODEL, through='UserBoardingHouse', related_name='boarding_houses')
 
@@ -33,7 +33,9 @@ class BoardingHouse(models.Model):
 
     @property
     def image_url(self):
-        return self.image
+        if self.image:
+            return self.image.url
+        return 'https://placehold.co/640x360/1a1a2e/7c3aed?text=No+Image'
 
 
 class UserBoardingHouse(models.Model):
@@ -82,12 +84,21 @@ class Reservation(models.Model):
         ("Pending", "Pending"),
         ("Confirmed", "Confirmed"),
         ("Cancelled", "Cancelled"),
+        ("Completed", "Completed"),
+    ]
+    BOOKING_TYPE_CHOICES = [
+        ("reservation", "Reservation"),
+        ("booking", "Booking"),
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="reservations")
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="reservations")
+    booking_type = models.CharField(max_length=20, choices=BOOKING_TYPE_CHOICES, default="reservation")
     reservation_date = models.DateField(auto_now_add=True)
     check_in_date = models.DateField()
+    check_out_date = models.DateField(null=True, blank=True)
+    notes = models.TextField(blank=True, help_text="Special requests or notes from the tenant")
+    total_amount = models.PositiveIntegerField(null=True, blank=True, help_text="Pre-computed total in PHP")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="Pending")
 
     class Meta:
@@ -95,6 +106,22 @@ class Reservation(models.Model):
 
     def __str__(self):
         return f"Reservation {self.pk} for {self.room}"
+
+    @property
+    def duration_days(self):
+        """Number of days between check-in and check-out."""
+        if self.check_out_date and self.check_in_date:
+            return (self.check_out_date - self.check_in_date).days
+        return None
+
+    @property
+    def computed_total(self):
+        """Room price * months (approx from days)."""
+        days = self.duration_days
+        if days and days > 0:
+            months = days / 30
+            return round(self.room.price * months)
+        return self.room.price
 
 
 class Inquiry(models.Model):
@@ -129,3 +156,25 @@ class Review(models.Model):
 
     def __str__(self):
         return f"Review {self.pk} ({self.rating}) for {self.boarding_house}"
+
+
+class Message(models.Model):
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="sent_messages"
+    )
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="received_messages"
+    )
+    boarding_house = models.ForeignKey(
+        BoardingHouse, on_delete=models.SET_NULL, null=True, blank=True, related_name="messages"
+    )
+    subject = models.CharField(max_length=255, blank=True)
+    body = models.TextField()
+    sent_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-sent_at"]
+
+    def __str__(self):
+        return f"Message from {self.sender} to {self.recipient} ({self.sent_at:%Y-%m-%d})"
