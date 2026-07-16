@@ -5,20 +5,38 @@ from django.contrib.auth.models import User
 from .models import Profile
 
 class RegisterForm(UserCreationForm):
+    username = forms.CharField(
+        required=True,
+        label="Username",
+        widget=forms.TextInput(attrs={"placeholder": "Username"}),
+        error_messages={
+            "required": "Username is required.",
+        },
+    )
     first_name = forms.CharField(
         required=True,
         label="First Name",
         widget=forms.TextInput(attrs={"placeholder": "First Name"}),
+        error_messages={
+            "required": "Required fields cannot be empty.",
+        },
     )
     last_name = forms.CharField(
         required=True,
         label="Last Name",
         widget=forms.TextInput(attrs={"placeholder": "Last Name"}),
+        error_messages={
+            "required": "Required fields cannot be empty.",
+        },
     )
     email = forms.EmailField(
         required=True,
         label="Email",
         widget=forms.EmailInput(attrs={"placeholder": "Email"}),
+        error_messages={
+            "required": "Required fields cannot be empty.",
+            "invalid": "Invalid email.",
+        },
     )
     contact_number = forms.CharField(
         required=False,
@@ -29,6 +47,28 @@ class RegisterForm(UserCreationForm):
         required=True,
         choices=Profile.ROLE_CHOICES,
         label="Role",
+        error_messages={
+            "required": "Required fields cannot be empty.",
+        },
+    )
+
+    password1 = forms.CharField(
+        label="Password",
+        strip=False,
+        min_length=8,
+        widget=forms.PasswordInput(attrs={"placeholder": "Password"}),
+        error_messages={
+            "required": "Password is required.",
+            "min_length": "Password is too short.",
+        },
+    )
+    password2 = forms.CharField(
+        label="Confirm Password",
+        strip=False,
+        widget=forms.PasswordInput(attrs={"placeholder": "Confirm Password"}),
+        error_messages={
+            "required": "Password is required.",
+        },
     )
 
     class Meta:

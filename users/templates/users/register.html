@@ -21,24 +21,43 @@
         <form method="POST">
             {% csrf_token %}
 
-            <div class="form-group">
-                <label for="id_username">Username</label>
-                {{ form.username }}
+{% if form.non_field_errors %}
+            <div class="form-errors">
+                {% for error in form.non_field_errors %}
+                    <div class="message error">{{ error }}</div>
+                {% endfor %}
             </div>
+        {% endif %}
+        <div class="form-group">
+            <label for="id_username">Username</label>
+            {{ form.username }}
+            {% for error in form.username.errors %}
+                <div class="field-error">{{ error }}</div>
+            {% endfor %}
+        </div>
 
-            <div class="form-group">
-                <label for="id_first_name">First Name</label>
-                {{ form.first_name }}
-            </div>
+        <div class="form-group">
+            <label for="id_first_name">First Name</label>
+            {{ form.first_name }}
+            {% for error in form.first_name.errors %}
+                <div class="field-error">{{ error }}</div>
+            {% endfor %}
+        </div>
 
-            <div class="form-group">
-                <label for="id_last_name">Last Name</label>
-                {{ form.last_name }}
-            </div>
+        <div class="form-group">
+            <label for="id_last_name">Last Name</label>
+            {{ form.last_name }}
+            {% for error in form.last_name.errors %}
+                <div class="field-error">{{ error }}</div>
+            {% endfor %}
+        </div>
 
-            <div class="form-group">
-                <label for="id_email">Email</label>
-                {{ form.email }}
+        <div class="form-group">
+            <label for="id_email">Email</label>
+            {{ form.email }}
+            {% for error in form.email.errors %}
+                <div class="field-error">{{ error }}</div>
+            {% endfor %}
             </div>
 
             <div class="form-group">
@@ -49,17 +68,26 @@
             <div class="form-group">
                 <label for="id_role">Role</label>
                 {{ form.role }}
+                {% for error in form.role.errors %}
+                    <div class="field-error">{{ error }}</div>
+                {% endfor %}
             </div>
 
             <div class="form-group">
                 <label for="id_password1">Password</label>
                 {{ form.password1 }}
+                {% for error in form.password1.errors %}
+                    <div class="field-error">{{ error }}</div>
+                {% endfor %}
                 <small class="help">{{ form.password1.help_text }}</small>
             </div>
 
             <div class="form-group">
                 <label for="id_password2">Confirm Password</label>
                 {{ form.password2 }}
+                {% for error in form.password2.errors %}
+                    <div class="field-error">{{ error }}</div>
+                {% endfor %}
             </div>
 
             <button type="submit">REGISTER</button>

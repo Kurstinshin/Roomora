@@ -12,11 +12,39 @@
    PAGE BACKGROUND
 ========================= */
 body {
-    background: linear-gradient(135deg, #4facfe, #00f2fe);
-    height: 100vh;
+    min-height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
+    background: #000;
+}
+
+.auth-wrapper {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 20px;
+    position: relative;
+    background: url('/media/boarding_houses/Chilton-Cantelo-School_008.jpg') center/cover no-repeat;
+}
+
+.auth-wrapper::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(2, 16, 28, 0.45);
+}
+
+.auth-container {
+    position: relative;
+    z-index: 1;
+    width: 380px;
+    background: rgba(255, 255, 255, 0.93);
+    padding: 35px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
 }
 
 /* =========================

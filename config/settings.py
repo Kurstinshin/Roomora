@@ -149,5 +149,10 @@ LOGIN_REDIRECT_URL = "dashboard"
 LOGOUT_REDIRECT_URL = "login"
 MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
 
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 7
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
