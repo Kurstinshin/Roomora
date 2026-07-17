@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: roomora-web
+    env: python
+    plan: starter
+    region: oregon
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn config.wsgi --log-file -
+    envVars:
+      - key: DEBUG
+        value: 'False'
+      - key: SECRET_KEY
+        value: 'replace-with-production-secret'
+      - key: ALLOWED_HOSTS
+        value: 'your-app.onrender.com'
+      - key: DATABASE_URL
+        value: 'postgres://<user>:<password>@<host>:<port>/<db>'
+      - key: CSRF_TRUSTED_ORIGINS
+        value: 'https://your-app.onrender.com'
