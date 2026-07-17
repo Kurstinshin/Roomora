@@ -1,50 +1,85 @@
 {% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — Roomora</title>
+  <meta name="description" content="Sign in to Roomora to browse boarding houses and manage your reservations.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/auth.css' %}">
+</head>
+<body>
 
-<link rel="stylesheet" href="{% static 'css/auth.css' %}">
+<div class="auth-bg">
+  <!-- Animated orbs -->
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
 
 <div class="auth-wrapper">
-    <div class="auth-container">
-        <h2>Login</h2>
+  <div class="auth-card">
+
+    <!-- Brand -->
+    <div class="auth-brand">
+      <div class="brand-logo">🏠</div>
+      <div class="brand-name">Roomora</div>
+    </div>
+
+    <h1 class="auth-title">Welcome back</h1>
+    <p class="auth-subtitle">Sign in to your account to continue</p>
 
     {% if messages %}
-        <div class="message-list">
-            {% for message in messages %}
-                <div class="message {% if message.tags %}{{ message.tags }}{% endif %}">{{ message }}</div>
-            {% endfor %}
-        </div>
+    <div class="msg-list">
+      {% for message in messages %}
+      <div class="msg {{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    </div>
     {% endif %}
 
-    <form method="POST">
-        {% csrf_token %}
-        {% if form.non_field_errors %}
-            <div class="form-errors">
-                {% for error in form.non_field_errors %}
-                    <div class="message error">{{ error }}</div>
-                {% endfor %}
-            </div>
-        {% endif %}
-        <div class="form-group">
-            <label for="id_email">Email</label>
-            {{ form.email }}
-            {% for error in form.email.errors %}
-                <div class="field-error">{{ error }}</div>
-            {% endfor %}
+    <form method="POST" class="auth-form" id="login-form">
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+      <div class="msg error">
+        {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+      </div>
+      {% endif %}
+
+      <div class="field-group">
+        <label for="id_email">Email address</label>
+        {{ form.email }}
+        {% for error in form.email.errors %}
+        <div class="field-error">{{ error }}</div>
+        {% endfor %}
+      </div>
+
+      <div class="field-group">
+        <div class="field-label-row">
+          <label for="id_password">Password</label>
+          <a href="#" class="forgot-link">Forgot password?</a>
         </div>
-        <div class="form-group">
-            <label for="id_password">Password</label>
-            {{ form.password }}
-            {% for error in form.password.errors %}
-                <div class="field-error">{{ error }}</div>
-            {% endfor %}
-        </div>
-        <div class="form-group" style="text-align:right; font-size:0.95rem;">
-            <a href="#">Forgot Password?</a>
-        </div>
-        <button type="submit">LOGIN</button>
+        {{ form.password }}
+        {% for error in form.password.errors %}
+        <div class="field-error">{{ error }}</div>
+        {% endfor %}
+      </div>
+
+      <button type="submit" class="auth-btn" id="login-submit">
+        <span>Sign In</span>
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </button>
     </form>
 
     <div class="auth-footer">
-        Don't have an account? <a href="{% url 'register' %}">Sign Up</a>
+      Don't have an account?
+      <a href="{% url 'register' %}" id="go-register">Create one →</a>
     </div>
-    </div>
+  </div>
 </div>
+
+</body>
+</html>

@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
@@ -68,28 +68,6 @@ def logout_view(request):
     return redirect("login")
 
 
-def _seed_default_listings():
-    if not BoardingHouse.objects.filter(is_active=True).exists():
-        BoardingHouse.objects.bulk_create([
-            BoardingHouse(
-                house_name="Room A",
-                address="Cebu City",
-                price=4500,
-                description="Comfortable boarding house with fast Wi-Fi and easy access to transport.",
-                image="images.jpg",
-                is_active=True,
-            ),
-            BoardingHouse(
-                house_name="Room B",
-                address="Mandaue City",
-                price=5000,
-                description="Clean and cozy boarding house close to malls and restaurants.",
-                image="https://via.placeholder.com/640x360?text=Room+B",
-                is_active=True,
-            ),
-        ])
-
-
 @login_required
 def dashboard(request):
     # Landlords go to their own dashboard
@@ -98,8 +76,6 @@ def dashboard(request):
             return redirect("landlord_dashboard")
     except Exception:
         pass
-
-    _seed_default_listings()
 
     listings = BoardingHouse.objects.filter(is_active=True)
     search = request.GET.get("search", "").strip()
@@ -156,9 +132,3 @@ def dashboard(request):
         "inbox_messages": inbox_messages,
         "unread_count": unread_count,
     })
-
-
-@login_required
-def listing_detail(request, pk):
-    listing = get_object_or_404(BoardingHouse, pk=pk, is_active=True)
-    return render(request, "listings/listing_detail.html", {"listing": listing})
