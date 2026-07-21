@@ -148,7 +148,12 @@
 
         {% if houses %}
           {% for item in houses %}
-          <div class="property-card" id="property-{{ item.house.pk }}">
+          <div class="property-card" id="property-{{ item.house.pk }}"
+            data-house-pk="{{ item.house.pk }}"
+            data-house-name="{{ item.house.house_name|escapejs }}"
+            data-house-address="{{ item.house.address|escapejs }}"
+            data-house-price="{{ item.house.price }}"
+            data-house-description="{{ item.house.description|escapejs }}">
 
             <!-- Property header -->
             <div class="property-header">
@@ -167,6 +172,9 @@
               </div>
               <div class="property-actions">
                 <a href="{% url 'listing_detail' item.house.pk %}" class="btn-ghost" style="font-size:0.8rem;padding:7px 14px;">View Public Page</a>
+                <button type="button" class="btn-ghost" style="font-size:0.8rem;padding:7px 14px;" onclick="openEditModal(this.closest('.property-card'))">
+                  ✏️ Edit
+                </button>
                 <form method="post" action="{% url 'toggle_house_availability' item.house.pk %}">
                   {% csrf_token %}
                   <button type="submit" class="btn-sm {% if item.house.availability_status == 'Available' %}danger{% else %}success{% endif %}">
@@ -510,6 +518,41 @@
   </div>
 </div>
 
+<!-- ════════════════════════════════════
+     EDIT PROPERTY MODAL
+════════════════════════════════════ -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal" style="position:relative;">
+    <button class="modal-close" onclick="closeEditModal()" id="close-edit-modal">✕</button>
+    <div class="modal-title">✏️ Edit Property</div>
+    <form method="post" id="edit-house-form" enctype="multipart/form-data">
+      {% csrf_token %}
+      <input type="hidden" name="edit_house" value="1">
+      <div class="publish-form-grid">
+        <div class="form-group">
+          <label>House Name</label>
+          <input type="text" name="house_name" id="edit-house-name" placeholder="e.g. Sunrise Boarding House" maxlength="255" required>
+        </div>
+        <div class="form-group">
+          <label>Address</label>
+          <input type="text" name="address" id="edit-house-address" placeholder="Full address" maxlength="255" required>
+        </div>
+        <div class="form-group">
+          <label>Monthly Price (₱)</label>
+          <input type="number" name="price" id="edit-house-price" min="1" placeholder="Monthly price" required>
+        </div>
+        <div class="form-group full-width">
+          <label>Description</label>
+          <textarea name="description" id="edit-house-description" rows="4" placeholder="Describe the boarding house"></textarea>
+        </div>
+      </div>
+      <button type="submit" class="btn-primary" style="width:100%;justify-content:center;" id="submit-edit">
+        💾 Save Changes
+      </button>
+    </form>
+  </div>
+</div>
+
 <!-- Style form inputs inside modal / add-room forms -->
 <style>
   input[type="text"], input[type="number"], input[type="url"], textarea, select {
@@ -598,10 +641,34 @@
     if (tc) { tc.style.opacity = '0'; tc.style.transition = 'opacity 0.5s'; setTimeout(() => tc.remove(), 500); }
   }, 4000);
 
-  // Close modal on outside click
+  // Close modals on outside click
   document.getElementById('publishModal').addEventListener('click', function(e) {
     if (e.target === this) this.classList.remove('open');
   });
+  document.getElementById('editModal').addEventListener('click', function(e) {
+    if (e.target === this) closeEditModal();
+  });
+
+  // Edit modal
+  function openEditModal(card) {
+    const pk          = card.dataset.housePk;
+    const name        = card.dataset.houseName;
+    const address     = card.dataset.houseAddress;
+    const price       = card.dataset.housePrice;
+    const description = card.dataset.houseDescription;
+
+    document.getElementById('edit-house-name').value        = name;
+    document.getElementById('edit-house-address').value     = address;
+    document.getElementById('edit-house-price').value       = price;
+    document.getElementById('edit-house-description').value = description;
+    document.getElementById('edit-house-form').action       = '/listings/landlord/houses/' + pk + '/edit/';
+
+    document.getElementById('editModal').classList.add('open');
+  }
+
+  function closeEditModal() {
+    document.getElementById('editModal').classList.remove('open');
+  }
 
   // Show selected filename in upload area
   document.addEventListener('change', function(e) {

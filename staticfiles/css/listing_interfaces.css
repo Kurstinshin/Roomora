@@ -1,0 +1,7 @@
+.interface-row{display:flex;gap:20px;flex-wrap:wrap;margin-top:16px}
+.interface-card{flex:1;min-width:240px;background:#fffafc;border:1px solid #f2dce3;border-radius:14px;padding:16px;box-shadow:0 10px 24px rgba(125,67,88,0.09)}
+.interface-title{margin:0 0 8px 0;font-size:1.05rem;font-weight:700;color:#6f4053}
+.interface-form label{display:block;font-size:0.9rem;margin:6px 0;color:#7d5c68}
+.interface-form input[type=date],.interface-form textarea,.interface-form input[type=text],.interface-form input[type=number]{width:100%;padding:8px;border:1px solid #efd7e0;border-radius:8px;background:#fffdfd}
+.interface-btn{background:linear-gradient(135deg,#d46a90,#b24d6f);color:#fff;border:none;padding:8px 12px;border-radius:8px;margin-top:10px;cursor:pointer;box-shadow:0 6px 16px rgba(180,77,111,0.2)}
+.interface-btn:hover{opacity:0.95;transform:translateY(-1px)}

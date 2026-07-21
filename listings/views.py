@@ -508,6 +508,33 @@ def toggle_house_availability(request, pk):
 
 
 @login_required
+def edit_house(request, pk):
+    """Landlord edits an existing boarding house they own."""
+    forbidden = _require_landlord(request)
+    if forbidden:
+        return forbidden
+
+    house = get_object_or_404(BoardingHouse, pk=pk)
+    owns = UserBoardingHouse.objects.filter(
+        user=request.user, boarding_house=house, assigned_role="landlord"
+    ).exists()
+    if not owns:
+        return HttpResponseForbidden("You don't own this property.")
+
+    if request.method == "POST":
+        form = BoardingHouseForm(request.POST, request.FILES, instance=house)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"'{house.house_name}' has been updated.")
+        else:
+            for errs in form.errors.values():
+                for err in errs:
+                    messages.error(request, err)
+
+    return redirect("landlord_dashboard")
+
+
+@login_required
 def mark_message_read(request, pk):
     msg = get_object_or_404(Message, pk=pk, recipient=request.user)
     msg.is_read = True
