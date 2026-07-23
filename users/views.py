@@ -1,12 +1,12 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db.models import Q
 
-from .forms import LoginForm, RegisterForm
-from listings.models import BoardingHouse, Inquiry, Message, Reservation
+from .forms import LoginForm, ProfileEditForm, RegisterForm
+from listings.models import BoardingHouse, Favorite, Inquiry, Message, Notification, Reservation
 
 
 def home(request):
@@ -121,6 +121,18 @@ def dashboard(request):
 
     unread_count = inbox_messages.filter(is_read=False).count()
 
+    # Favorites
+    fav_ids = set(
+        Favorite.objects.filter(user=request.user).values_list("boarding_house_id", flat=True)
+    )
+    fav_listings = BoardingHouse.objects.filter(
+        pk__in=fav_ids, is_active=True
+    ).prefetch_related("rooms")
+
+    # Notifications
+    notif_unread = Notification.objects.filter(user=request.user, is_read=False).count()
+    recent_notifs = Notification.objects.filter(user=request.user).order_by("-created_at")[:8]
+
     return render(request, "users/dashboard.html", {
         "listings": listings,
         "search": search,
@@ -131,4 +143,71 @@ def dashboard(request):
         "my_inquiries": my_inquiries,
         "inbox_messages": inbox_messages,
         "unread_count": unread_count,
+        "fav_ids": fav_ids,
+        "fav_listings": fav_listings,
+        "notif_unread": notif_unread,
+        "recent_notifs": recent_notifs,
     })
+
+
+@login_required
+def profile_edit(request):
+    """Edit the logged-in user's profile details."""
+    user = request.user
+    try:
+        profile = user.profile
+    except Exception:
+        from users.models import Profile
+        profile = Profile.objects.create(user=user)
+
+    if request.method == "POST":
+        form = ProfileEditForm(request.POST, request.FILES, user=user)
+        if form.is_valid():
+            user.first_name = form.cleaned_data["first_name"]
+            user.last_name = form.cleaned_data["last_name"]
+            user.email = form.cleaned_data["email"]
+            user.save()
+
+            profile.contact_number = form.cleaned_data.get("contact_number", "")
+            profile.bio = form.cleaned_data.get("bio", "")
+            if form.cleaned_data.get("profile_photo"):
+                profile.profile_photo = form.cleaned_data["profile_photo"]
+            profile.save()
+
+            messages.success(request, "Profile updated successfully.")
+            return redirect("profile_edit")
+        else:
+            for errs in form.errors.values():
+                for err in errs:
+                    messages.error(request, err)
+    else:
+        form = ProfileEditForm(
+            user=user,
+            initial={
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "email": user.email,
+                "contact_number": profile.contact_number,
+                "bio": profile.bio,
+            },
+        )
+
+    notif_unread = Notification.objects.filter(user=request.user, is_read=False).count()
+    return render(request, "users/profile_edit.html", {
+        "form": form,
+        "profile": profile,
+        "notif_unread": notif_unread,
+    })
+
+
+@login_required
+def booking_detail(request, pk):
+    """Tenant's detailed view of a single reservation."""
+    reservation = get_object_or_404(Reservation, pk=pk, user=request.user)
+    notif_unread = Notification.objects.filter(user=request.user, is_read=False).count()
+    return render(request, "users/booking_detail.html", {
+        "reservation": reservation,
+        "notif_unread": notif_unread,
+    })
+
+

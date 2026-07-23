@@ -2,6 +2,34 @@ from django.conf import settings
 from django.db import models
 
 
+# ──────────────────────────────────────────────
+# NOTIFICATIONS
+# ──────────────────────────────────────────────
+
+class Notification(models.Model):
+    NOTIF_TYPES = [
+        ("status_change", "Status Change"),
+        ("inquiry_reply", "Inquiry Reply"),
+        ("message", "Message"),
+        ("general", "General"),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications"
+    )
+    message = models.CharField(max_length=500)
+    notif_type = models.CharField(max_length=30, choices=NOTIF_TYPES, default="general")
+    link = models.CharField(max_length=255, blank=True, help_text="URL to navigate to on click")
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Notif for {self.user} — {self.message[:50]}"
+
+
 class BoardingHouse(models.Model):
     AVAILABILITY_CHOICES = [
         ("Available", "Available"),
@@ -180,3 +208,64 @@ class Message(models.Model):
 
     def __str__(self):
         return f"Message from {self.sender} to {self.recipient} ({self.sent_at:%Y-%m-%d})"
+
+
+# ──────────────────────────────────────────────
+# FAVORITES / WISHLIST
+# ──────────────────────────────────────────────
+
+class Favorite(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="favorites"
+    )
+    boarding_house = models.ForeignKey(
+        BoardingHouse, on_delete=models.CASCADE, related_name="favorited_by"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [("user", "boarding_house")]
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user} ♥ {self.boarding_house}"
+
+
+# ──────────────────────────────────────────────
+# PROPERTY PHOTO GALLERY
+# ──────────────────────────────────────────────
+
+class BoardingHousePhoto(models.Model):
+    boarding_house = models.ForeignKey(
+        BoardingHouse, on_delete=models.CASCADE, related_name="photos"
+    )
+    image = models.ImageField(upload_to="boarding_house_photos/")
+    caption = models.CharField(max_length=255, blank=True)
+    order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "pk"]
+
+    def __str__(self):
+        return f"Photo for {self.boarding_house.house_name} (#{self.pk})"
+
+
+# ──────────────────────────────────────────────
+# INQUIRY CONVERSATION THREAD
+# ──────────────────────────────────────────────
+
+class InquiryReply(models.Model):
+    inquiry = models.ForeignKey(
+        Inquiry, on_delete=models.CASCADE, related_name="replies"
+    )
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="inquiry_replies"
+    )
+    body = models.TextField()
+    sent_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["sent_at"]
+
+    def __str__(self):
+        return f"Reply by {self.sender} on Inquiry #{self.inquiry_id}"

@@ -2,7 +2,7 @@ import datetime
 from django import forms
 from django.core.exceptions import ValidationError
 
-from .models import BoardingHouse, Room
+from .models import BoardingHouse, BoardingHousePhoto, Room
 
 
 class ReservationForm(forms.Form):
@@ -107,10 +107,10 @@ class RoomForm(forms.ModelForm):
 
 
 class RoomEditForm(forms.ModelForm):
-    """Landlord quick-edit: change availability status and available_from date."""
+    """Landlord quick-edit: change availability status, available_from date, and basic room details."""
     class Meta:
         model = Room
-        fields = ["availability_status", "available_from"]
+        fields = ["room_number", "room_type", "capacity", "price", "availability_status", "available_from"]
         widgets = {
             "availability_status": forms.Select(),
             "available_from": forms.DateInput(attrs={"type": "date"}),
@@ -129,4 +129,24 @@ class MessageForm(forms.Form):
     body = forms.CharField(
         widget=forms.Textarea(attrs={"rows": 4, "placeholder": "Write your message…"}),
         max_length=3000,
+    )
+
+
+class BoardingHousePhotoForm(forms.ModelForm):
+    """Upload additional photos for a boarding house gallery."""
+    class Meta:
+        model = BoardingHousePhoto
+        fields = ["image", "caption"]
+        widgets = {
+            "image": forms.ClearableFileInput(attrs={"accept": "image/*"}),
+            "caption": forms.TextInput(attrs={"placeholder": "Optional caption (e.g. Living room)"}),
+        }
+
+
+class InquiryReplyForm(forms.Form):
+    """Tenant or landlord reply within an inquiry thread."""
+    body = forms.CharField(
+        label="Your reply",
+        widget=forms.Textarea(attrs={"rows": 3, "placeholder": "Type your reply…"}),
+        max_length=2000,
     )

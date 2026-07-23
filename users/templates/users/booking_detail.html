@@ -1,0 +1,245 @@
+{% load static humanize %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Booking #{{ reservation.pk|stringformat:"05d" }} — Roomora</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/tenant_dashboard.css' %}">
+  <style>
+    body { background: #0f0f1a; }
+    .wrap { max-width: 620px; margin: 0 auto; padding: 32px 20px 80px; }
+    .navbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 32px; position: sticky; top:0; z-index:50; }
+    .navbar-inner { display: flex; align-items: center; justify-content: space-between; height: 60px; max-width: 620px; margin: 0 auto; }
+    .navbar-brand { display: flex; align-items: center; gap: 8px; font-size: 1.1rem; font-weight: 800; text-decoration: none; color: var(--text-main); }
+    .navbar-right { display: flex; align-items: center; gap: 14px; }
+    .navbar-right a { font-size: 0.85rem; color: var(--text-muted); text-decoration: none; }
+    .back-link { display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 0.875rem; font-weight: 500; text-decoration: none; margin-bottom: 24px; transition: color 0.2s; }
+    .back-link:hover { color: var(--primary); }
+
+    /* Status banner */
+    .status-banner {
+      border-radius: var(--radius); padding: 18px 22px; margin-bottom: 22px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .status-banner.pending   { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.3); }
+    .status-banner.confirmed { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.3); }
+    .status-banner.cancelled { background: rgba(239,68,68,0.08);  border: 1px solid rgba(239,68,68,0.3); }
+    .status-banner.completed { background: rgba(124,58,237,0.08); border: 1px solid rgba(124,58,237,0.3); }
+    .banner-icon { font-size: 1.5rem; flex-shrink: 0; }
+    .banner-text { flex: 1; }
+    .banner-status { font-size: 1rem; font-weight: 800; margin-bottom: 2px; }
+    .banner-desc { font-size: 0.8rem; color: var(--text-muted); }
+
+    /* Detail card */
+    .detail-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 18px; box-shadow: 0 6px 30px rgba(0,0,0,.3); }
+    .card-top { background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%); padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+    .ref-label { font-size: 0.68rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
+    .ref-num { font-size: 1.2rem; font-weight: 800; }
+    .type-chip { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 4px 10px; border-radius: 999px; }
+    .type-chip.booking     { background: rgba(124,58,237,0.15); color: #a78bfa; border: 1px solid rgba(124,58,237,0.3); }
+    .type-chip.reservation { background: rgba(16,185,129,0.15); color: var(--success); border: 1px solid rgba(16,185,129,0.3); }
+    .card-body { padding: 24px; }
+
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 20px; }
+    @media (max-width: 480px) { .info-grid { grid-template-columns: 1fr; } }
+    .info-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-dim); margin-bottom: 4px; }
+    .info-value { font-size: 0.9rem; font-weight: 600; }
+
+    .divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+
+    .price-row { display: flex; justify-content: space-between; font-size: 0.85rem; padding: 5px 0; }
+    .price-row .lbl { color: var(--text-muted); }
+    .price-row .val { font-weight: 600; }
+    .price-row.total { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 6px; }
+    .price-row.total .lbl { font-weight: 700; color: var(--text-main); }
+    .price-row.total .val { font-size: 1.1rem; font-weight: 800; color: #a78bfa; }
+
+    .notes-box { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 13px 15px; margin-top: 16px; font-size: 0.875rem; color: var(--text-muted); line-height: 1.6; }
+    .notes-box strong { display: block; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-dim); margin-bottom: 4px; }
+
+    .action-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; }
+    .btn-outline { display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface2); color: var(--text-main); font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s; text-decoration: none; font-family: inherit; }
+    .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-cancel { display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px; border-radius: 999px; background: rgba(239,68,68,0.08); color: #ef4444; border: 1px solid rgba(239,68,68,0.25); font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+    .btn-cancel:hover { background: rgba(239,68,68,0.18); border-color: #ef4444; }
+
+    /* Cancel modal */
+    .cancel-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.75); backdrop-filter: blur(4px); z-index: 200; display: none; align-items: center; justify-content: center; padding: 20px; }
+    .cancel-overlay.open { display: flex; }
+    .cancel-modal { background: var(--surface); border: 1px solid rgba(239,68,68,0.3); border-radius: var(--radius); padding: 30px; max-width: 420px; width: 100%; box-shadow: 0 8px 40px rgba(0,0,0,.5); animation: popIn 0.2s ease; }
+    @keyframes popIn { from { opacity:0; transform:scale(0.94); } to { opacity:1; transform:none; } }
+    .cancel-modal h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 10px; }
+    .cancel-modal p  { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 20px; }
+    .cancel-modal-btns { display: flex; gap: 10px; }
+
+    /* Bell */
+    .bell-btn { position: relative; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border); text-decoration: none; font-size: 1rem; transition: border-color 0.2s; }
+    .bell-btn:hover { border-color: var(--primary); }
+    .bell-count { position: absolute; top: -4px; right: -4px; background: var(--danger); color: #fff; font-size: 0.6rem; font-weight: 800; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="{% url 'dashboard' %}" class="navbar-brand">🏠 Roomora</a>
+    <div class="navbar-right">
+      <a href="{% url 'notifications_list' %}" class="bell-btn" title="Notifications">🔔{% if notif_unread %}<span class="bell-count">{{ notif_unread }}</span>{% endif %}</a>
+      <a href="{% url 'dashboard' %}">← Dashboard</a>
+      <form method="POST" action="{% url 'logout' %}" style="display:inline;margin:0;">{% csrf_token %}<button type="submit" style="background:none;border:none;padding:0;color:var(--danger);cursor:pointer;font:inherit;font-size:0.85rem;">Logout</button></form>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+  <a href="{% url 'dashboard' %}#reservations" class="back-link">← My Reservations</a>
+
+  <!-- Status banner -->
+  {% if reservation.status == "Pending" %}
+  <div class="status-banner pending">
+    <div class="banner-icon">⏳</div>
+    <div class="banner-text">
+      <div class="banner-status">Awaiting Confirmation</div>
+      <div class="banner-desc">The landlord will confirm or decline within 24 hours.</div>
+    </div>
+  </div>
+  {% elif reservation.status == "Confirmed" %}
+  <div class="status-banner confirmed">
+    <div class="banner-icon">🎉</div>
+    <div class="banner-text">
+      <div class="banner-status">Confirmed!</div>
+      <div class="banner-desc">Your booking is confirmed. Enjoy your stay!</div>
+    </div>
+  </div>
+  {% elif reservation.status == "Cancelled" %}
+  <div class="status-banner cancelled">
+    <div class="banner-icon">❌</div>
+    <div class="banner-text">
+      <div class="banner-status">Cancelled</div>
+      <div class="banner-desc">This booking has been cancelled.</div>
+    </div>
+  </div>
+  {% elif reservation.status == "Completed" %}
+  <div class="status-banner completed">
+    <div class="banner-icon">✅</div>
+    <div class="banner-text">
+      <div class="banner-status">Completed</div>
+      <div class="banner-desc">Your stay at this property has been completed.</div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Detail card -->
+  <div class="detail-card">
+    <div class="card-top">
+      <div>
+        <div class="ref-label">Reference Number</div>
+        <div class="ref-num">#{{ reservation.pk|stringformat:"05d" }}</div>
+      </div>
+      <span class="type-chip {{ reservation.booking_type }}">
+        {% if reservation.booking_type == 'booking' %}🚀 Booking{% else %}📋 Reservation{% endif %}
+      </span>
+    </div>
+    <div class="card-body">
+      <div class="info-grid">
+        <div>
+          <div class="info-label">Property</div>
+          <div class="info-value">{{ reservation.room.boarding_house.house_name }}</div>
+        </div>
+        <div>
+          <div class="info-label">Room</div>
+          <div class="info-value">Room {{ reservation.room.room_number }} · {{ reservation.room.room_type|capfirst }}</div>
+        </div>
+        <div>
+          <div class="info-label">Address</div>
+          <div class="info-value" style="font-size:0.82rem;">{{ reservation.room.boarding_house.address }}</div>
+        </div>
+        <div>
+          <div class="info-label">Capacity</div>
+          <div class="info-value">{{ reservation.room.capacity }} person{{ reservation.room.capacity|pluralize }}</div>
+        </div>
+        {% if reservation.booking_type == 'booking' %}
+        <div>
+          <div class="info-label">Check-in</div>
+          <div class="info-value">{{ reservation.check_in_date|date:"F d, Y" }}</div>
+        </div>
+        <div>
+          <div class="info-label">Check-out</div>
+          <div class="info-value">{{ reservation.check_out_date|date:"F d, Y" }}</div>
+        </div>
+        {% if reservation.duration_days %}
+        <div>
+          <div class="info-label">Duration</div>
+          <div class="info-value">{{ reservation.duration_days }} day{{ reservation.duration_days|pluralize }}</div>
+        </div>
+        {% endif %}
+        {% else %}
+        <div>
+          <div class="info-label">Move-in Date</div>
+          <div class="info-value">{{ reservation.check_in_date|date:"F d, Y" }}</div>
+        </div>
+        <div>
+          <div class="info-label">Billing</div>
+          <div class="info-value">Month-to-month</div>
+        </div>
+        {% endif %}
+        <div>
+          <div class="info-label">Submitted On</div>
+          <div class="info-value">{{ reservation.reservation_date|date:"F d, Y" }}</div>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Pricing -->
+      <div class="price-row">
+        <span class="lbl">Room Rate</span>
+        <span class="val">₱{{ reservation.room.price|intcomma }}/month</span>
+      </div>
+      {% if reservation.booking_type == 'booking' and reservation.duration_days %}
+      <div class="price-row">
+        <span class="lbl">Duration</span>
+        <span class="val">{{ reservation.duration_days }} days</span>
+      </div>
+      <div class="price-row total">
+        <span class="lbl">Estimated Total</span>
+        <span class="val">₱{{ reservation.computed_total|intcomma }}</span>
+      </div>
+      {% endif %}
+
+      {% if reservation.notes %}
+      <div class="notes-box">
+        <strong>📝 Your Notes</strong>{{ reservation.notes }}
+      </div>
+      {% endif %}
+
+      <div class="action-row">
+        <a href="{% url 'listing_detail' reservation.room.boarding_house.pk %}" class="btn-outline">View Property</a>
+        {% if reservation.status == "Pending" %}
+        <button class="btn-cancel" onclick="document.getElementById('cancelModal').classList.add('open')">✗ Cancel</button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if reservation.status == "Pending" %}
+<div class="cancel-overlay" id="cancelModal">
+  <div class="cancel-modal">
+    <h3>Cancel this booking?</h3>
+    <p>Reference #{{ reservation.pk|stringformat:"05d" }} — Room {{ reservation.room.room_number }} at {{ reservation.room.boarding_house.house_name }} will be released. This cannot be undone.</p>
+    <div class="cancel-modal-btns">
+      <form method="post" action="{% url 'cancel_reservation' reservation.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="btn-cancel">Yes, cancel</button>
+      </form>
+      <button class="btn-outline" onclick="document.getElementById('cancelModal').classList.remove('open')">Keep it</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+</body>
+</html>

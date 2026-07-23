@@ -1,0 +1,95 @@
+{% load static humanize %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notifications — Roomora</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/tenant_dashboard.css' %}">
+  <style>
+    body { background: #0f0f1a; }
+    .wrap { max-width: 680px; margin: 0 auto; padding: 32px 20px 80px; }
+    .navbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 32px; position: sticky; top: 0; z-index: 50; }
+    .navbar-inner { display: flex; align-items: center; justify-content: space-between; height: 60px; max-width: 680px; margin: 0 auto; }
+    .navbar-brand { display: flex; align-items: center; gap: 8px; font-size: 1.1rem; font-weight: 800; text-decoration: none; color: var(--text-main); }
+    .navbar-right { display: flex; align-items: center; gap: 14px; }
+    .navbar-right a { font-size: 0.85rem; color: var(--text-muted); text-decoration: none; }
+    .back-link { display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 0.875rem; font-weight: 500; text-decoration: none; margin-bottom: 24px; transition: color 0.2s; }
+    .back-link:hover { color: var(--primary); }
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+    .page-title { font-size: 1.4rem; font-weight: 800; }
+    .mark-all-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); color: var(--text-muted); font-size: 0.8rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+    .mark-all-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .notif-list { display: flex; flex-direction: column; gap: 10px; }
+    .notif-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 16px 18px; display: flex; align-items: flex-start; gap: 14px;
+      transition: border-color 0.2s; text-decoration: none; color: inherit;
+    }
+    .notif-card.unread { border-left: 3px solid var(--primary); background: rgba(124,58,237,0.04); }
+    .notif-card:hover { border-color: rgba(124,58,237,0.35); }
+    .notif-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 2px; }
+    .notif-body { flex: 1; min-width: 0; }
+    .notif-msg { font-size: 0.875rem; line-height: 1.6; font-weight: 500; }
+    .notif-card.unread .notif-msg { font-weight: 700; }
+    .notif-time { font-size: 0.72rem; color: var(--text-dim); margin-top: 4px; }
+    .notif-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); flex-shrink: 0; margin-top: 6px; }
+    .empty-notifs { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+    .empty-notifs .icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .empty-notifs h3 { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+    .empty-notifs p { font-size: 0.875rem; }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="{% url 'dashboard' %}" class="navbar-brand">🏠 Roomora</a>
+    <div class="navbar-right">
+      <a href="{% url 'dashboard' %}">← Dashboard</a>
+      <form method="POST" action="{% url 'logout' %}" style="display:inline;margin:0;">{% csrf_token %}<button type="submit" style="background:none;border:none;padding:0;color:var(--danger);cursor:pointer;font:inherit;font-size:0.85rem;">Logout</button></form>
+    </div>
+  </div>
+</nav>
+<div class="wrap">
+  <a href="{% url 'dashboard' %}" class="back-link">← Back to Dashboard</a>
+
+  <div class="page-header">
+    <div class="page-title">🔔 Notifications</div>
+    {% if notifications %}
+    <form method="post" action="{% url 'mark_all_notifications_read' %}">
+      {% csrf_token %}
+      <button type="submit" class="mark-all-btn" id="mark-all-read">✓ Mark all as read</button>
+    </form>
+    {% endif %}
+  </div>
+
+  {% if notifications %}
+  <div class="notif-list">
+    {% for notif in notifications %}
+    <a href="{% url 'mark_notification_read' notif.pk %}" class="notif-card {% if not notif.is_read %}unread{% endif %}" id="notif-{{ notif.pk }}">
+      <div class="notif-icon">
+        {% if notif.notif_type == 'status_change' %}🏠
+        {% elif notif.notif_type == 'inquiry_reply' %}💬
+        {% elif notif.notif_type == 'message' %}✉️
+        {% else %}🔔{% endif %}
+      </div>
+      <div class="notif-body">
+        <div class="notif-msg">{{ notif.message }}</div>
+        <div class="notif-time">{{ notif.created_at|date:"M d, Y H:i" }}</div>
+      </div>
+      {% if not notif.is_read %}<div class="notif-dot"></div>{% endif %}
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-notifs">
+    <div class="icon">🔔</div>
+    <h3>No notifications yet</h3>
+    <p>You'll see updates about your reservations and inquiry replies here.</p>
+  </div>
+  {% endif %}
+</div>
+</body>
+</html>

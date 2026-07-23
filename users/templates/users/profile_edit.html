@@ -1,0 +1,153 @@
+{% load static humanize %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit Profile — Roomora</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/tenant_dashboard.css' %}">
+  <style>
+    body { background: #0f0f1a; }
+    .wrap { max-width: 640px; margin: 0 auto; padding: 32px 20px 80px; }
+    .navbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 32px; position: sticky; top:0; z-index:50; }
+    .navbar-inner { display: flex; align-items: center; justify-content: space-between; height: 60px; max-width: 640px; margin: 0 auto; }
+    .navbar-brand { display: flex; align-items: center; gap: 8px; font-size: 1.1rem; font-weight: 800; text-decoration: none; color: var(--text-main); }
+    .navbar-right { display: flex; align-items: center; gap: 14px; }
+    .navbar-right a { font-size: 0.85rem; color: var(--text-muted); text-decoration: none; }
+    .back-link { display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 0.875rem; font-weight: 500; text-decoration: none; margin-bottom: 24px; transition: color 0.2s; }
+    .back-link:hover { color: var(--primary); }
+
+    /* Avatar area */
+    .avatar-section { display: flex; align-items: center; gap: 20px; margin-bottom: 28px; padding: 22px 24px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+    .avatar-big {
+      width: 72px; height: 72px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg, #7c3aed, #a78bfa);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.8rem; font-weight: 800; color: #fff; overflow: hidden;
+    }
+    .avatar-big img { width: 100%; height: 100%; object-fit: cover; }
+    .avatar-info { flex: 1; min-width: 0; }
+    .avatar-name { font-size: 1.1rem; font-weight: 800; margin-bottom: 2px; }
+    .avatar-role { font-size: 0.78rem; color: var(--text-dim); margin-bottom: 10px; }
+    .avatar-upload-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px; background: var(--surface2); border: 1px solid var(--border); color: var(--text-muted); font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+    .avatar-upload-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* Form card */
+    .form-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 26px; margin-bottom: 16px; }
+    .form-card h3 { font-size: 0.9rem; font-weight: 700; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--border); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 500px) { .field-row { grid-template-columns: 1fr; } }
+    .field-group { margin-bottom: 16px; }
+    .field-group:last-child { margin-bottom: 0; }
+    .field-group label { display: block; font-size: 0.72rem; font-weight: 700; color: var(--text-dim); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .field-group input, .field-group textarea {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text-main); padding: 10px 13px;
+      font-size: 0.875rem; outline: none; font-family: inherit; transition: border-color 0.2s;
+      box-sizing: border-box;
+    }
+    .field-group input:focus, .field-group textarea:focus { border-color: var(--primary); }
+    .field-group textarea { resize: vertical; min-height: 80px; }
+    .field-group .field-help { font-size: 0.72rem; color: var(--text-dim); margin-top: 4px; }
+
+    /* Role badge (read-only) */
+    .role-badge { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; }
+    .role-badge.tenant   { background: rgba(16,185,129,0.1); color: var(--success); border: 1px solid rgba(16,185,129,0.25); }
+    .role-badge.landlord { background: rgba(124,58,237,0.1); color: #a78bfa; border: 1px solid rgba(124,58,237,0.25); }
+
+    /* Submit */
+    .btn-save { width: 100%; padding: 13px; border: none; border-radius: var(--radius-sm); background: linear-gradient(135deg, #7c3aed, #6d28d9); color: #fff; font-size: 0.95rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: opacity 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-save:hover { opacity: 0.9; }
+
+    /* Toast */
+    .msg-toast { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 16px; margin-bottom: 14px; font-size: 0.875rem; }
+    .msg-toast.success { border-left: 3px solid var(--success); }
+    .msg-toast.error   { border-left: 3px solid var(--danger); }
+
+    /* Notification bell */
+    .bell-btn { position: relative; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border); text-decoration: none; font-size: 1rem; transition: border-color 0.2s; }
+    .bell-btn:hover { border-color: var(--primary); }
+    .bell-count { position: absolute; top: -4px; right: -4px; background: var(--danger); color: #fff; font-size: 0.6rem; font-weight: 800; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="{% url 'dashboard' %}" class="navbar-brand">🏠 Roomora</a>
+    <div class="navbar-right">
+      <a href="{% url 'notifications_list' %}" class="bell-btn" title="Notifications">🔔{% if notif_unread %}<span class="bell-count">{{ notif_unread }}</span>{% endif %}</a>
+      <a href="{% url 'dashboard' %}">← Dashboard</a>
+      <form method="POST" action="{% url 'logout' %}" style="display:inline;margin:0;">{% csrf_token %}<button type="submit" style="background:none;border:none;padding:0;color:var(--danger);cursor:pointer;font:inherit;font-size:0.85rem;">Logout</button></form>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+  <a href="{% url 'dashboard' %}" class="back-link">← Back to Dashboard</a>
+
+  {% if messages %}{% for message in messages %}<div class="msg-toast {{ message.tags }}">{{ message }}</div>{% endfor %}{% endif %}
+
+  <!-- Avatar section -->
+  <div class="avatar-section">
+    <div class="avatar-big">
+      {% if profile.photo_url %}
+        <img src="{{ profile.photo_url }}" alt="Profile photo">
+      {% else %}
+        {{ user.username|slice:":1"|upper }}
+      {% endif %}
+    </div>
+    <div class="avatar-info">
+      <div class="avatar-name">{{ user.first_name }} {{ user.last_name }}{% if not user.first_name %} {{ user.username }}{% endif %}</div>
+      <div class="avatar-role">@{{ user.username }} · {{ user.email }}</div>
+      <span class="role-badge {{ profile.role }}">{% if profile.role == 'landlord' %}🏢{% else %}🎓{% endif %} {{ profile.role|capfirst }}</span>
+    </div>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" id="profile-form">
+    {% csrf_token %}
+
+    <!-- Personal info -->
+    <div class="form-card">
+      <h3>Personal Information</h3>
+      <div class="field-row">
+        <div class="field-group">
+          <label for="id_first_name">First Name</label>
+          {{ form.first_name }}
+        </div>
+        <div class="field-group">
+          <label for="id_last_name">Last Name</label>
+          {{ form.last_name }}
+        </div>
+      </div>
+      <div class="field-group">
+        <label for="id_email">Email Address</label>
+        {{ form.email }}
+      </div>
+      <div class="field-group">
+        <label for="id_contact_number">Contact Number</label>
+        {{ form.contact_number }}
+      </div>
+      <div class="field-group">
+        <label for="id_bio">Bio <span style="font-weight:400;color:var(--text-dim);">(optional)</span></label>
+        {{ form.bio }}
+        <div class="field-help">Max 500 characters</div>
+      </div>
+    </div>
+
+    <!-- Profile photo -->
+    <div class="form-card">
+      <h3>Profile Photo</h3>
+      <div class="field-group">
+        <label for="id_profile_photo">Upload New Photo</label>
+        {{ form.profile_photo }}
+        <div class="field-help">JPG, PNG or WEBP — max 5 MB. Leave empty to keep current photo.</div>
+      </div>
+    </div>
+
+    <button type="submit" class="btn-save" id="save-profile">💾 Save Changes</button>
+  </form>
+</div>
+</body>
+</html>

@@ -65,10 +65,19 @@
         Messages
         {% if unread_count %}<span class="nav-badge danger">{{ unread_count }}</span>{% endif %}
       </button>
+
+      <button class="nav-item" id="nav-analytics" onclick="showTab('analytics', this); loadAnalytics();">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Analytics
+      </button>
     </nav>
 
     <div class="sidebar-footer">
-      <a href="{% url 'dashboard' %}" style="color:#94a3b8;">
+      <a href="{% url 'profile_edit' %}" style="display:flex;align-items:center;gap:8px;color:#94a3b8;font-size:0.85rem;text-decoration:none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Edit Profile
+      </a>
+      <a href="{% url 'dashboard' %}" style="color:#94a3b8;display:flex;align-items:center;gap:8px;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         Browse as Tenant
       </a>
@@ -94,6 +103,10 @@
         <div class="topbar-subtitle" id="topbar-subtitle">Manage your boarding houses and rooms</div>
       </div>
       <div class="topbar-actions">
+        <a href="{% url 'notifications_list' %}" style="position:relative;display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);text-decoration:none;font-size:1.1rem;transition:border-color 0.2s;" title="Notifications">
+          🔔
+          {% if notif_unread %}<span style="position:absolute;top:-4px;right:-4px;background:var(--danger);color:#fff;font-size:0.6rem;font-weight:800;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;">{{ notif_unread }}</span>{% endif %}
+        </a>
         <button class="btn-primary" id="open-publish-modal" onclick="document.getElementById('publishModal').classList.add('open')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           New Property
@@ -175,11 +188,15 @@
                 <button type="button" class="btn-ghost" style="font-size:0.8rem;padding:7px 14px;" onclick="openEditModal(this.closest('.property-card'))">
                   ✏️ Edit
                 </button>
-                <form method="post" action="{% url 'toggle_house_availability' item.house.pk %}">
+                <form method="post" action="{% url 'toggle_house_availability' item.house.pk %}" style="display:inline-block;margin-right:6px;">
                   {% csrf_token %}
                   <button type="submit" class="btn-sm {% if item.house.availability_status == 'Available' %}danger{% else %}success{% endif %}">
                     {% if item.house.availability_status == 'Available' %}Set Unavailable{% else %}Set Available{% endif %}
                   </button>
+                </form>
+                <form method="post" action="{% url 'delete_house' item.house.pk %}" style="display:inline-block;" onsubmit="return confirm('Delete this boarding house and all its rooms permanently?');">
+                  {% csrf_token %}
+                  <button type="submit" class="btn-sm danger" style="padding:7px 14px;">🗑️ Delete</button>
                 </form>
               </div>
             </div>
@@ -200,22 +217,51 @@
                       <div class="room-chip-name">Room {{ room.room_number }}</div>
                       <div class="room-chip-meta">{{ room.room_type|capfirst }} · {{ room.capacity }} pax · ₱{{ room.price|intcomma }}/mo</div>
                       <div style="margin-top:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                        <span class="status-pill {% if room.availability_status == 'Available' %}confirmed{% else %}cancelled{% endif %}" style="font-size:0.65rem;">
-                          {{ room.availability_status }}
-                        </span>
+                        <form method="post" action="{% url 'toggle_room_availability' room.pk %}" style="margin:0;">
+                          {% csrf_token %}
+                          <button type="submit" class="status-pill {% if room.availability_status == 'Available' %}confirmed{% else %}cancelled{% endif %}" style="font-size:0.65rem;border:none;cursor:pointer;font-family:inherit;line-height:1;" title="Click to toggle status">
+                            {{ room.availability_status }}
+                          </button>
+                        </form>
                         {% if room.available_from %}
                         <span style="font-size:0.65rem;color:var(--text-dim);">from {{ room.available_from }}</span>
                         {% endif %}
                       </div>
                     </div>
-                    <button class="btn-sm primary" style="font-size:0.7rem;padding:4px 10px;white-space:nowrap;"
-                            onclick="toggleRoomEdit('{{ room.pk }}')">&#9998; Edit</button>
+                    <div style="display:flex;gap:6px;">
+                      <button class="btn-sm primary" style="font-size:0.7rem;padding:4px 10px;white-space:nowrap;"
+                              onclick="toggleRoomEdit('{{ room.pk }}')">&#9998; Edit</button>
+                      <form method="post" action="{% url 'delete_room' room.pk %}" onsubmit="return confirm('Delete this room permanently?');" style="margin:0;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-sm danger" style="font-size:0.7rem;padding:4px 10px;white-space:nowrap;" title="Delete Room">✕</button>
+                      </form>
+                    </div>
                   </div>
                   <!-- inline room edit form -->
                   <div class="room-edit-form" id="room-edit-{{ room.pk }}">
                     <form method="post" action="{% url 'edit_room_status' room.pk %}">
                       {% csrf_token %}
-                      <div class="room-edit-grid">
+                      <div class="room-edit-grid" style="grid-template-columns: 1fr 1fr; gap:10px;">
+                        <div class="form-group">
+                          <label>Room No.</label>
+                          <input type="text" name="room_number" value="{{ room.room_number }}" required>
+                        </div>
+                        <div class="form-group">
+                          <label>Type</label>
+                          <select name="room_type">
+                            <option value="single" {% if room.room_type == 'single' %}selected{% endif %}>Single</option>
+                            <option value="double" {% if room.room_type == 'double' %}selected{% endif %}>Double</option>
+                            <option value="suite" {% if room.room_type == 'suite' %}selected{% endif %}>Suite</option>
+                          </select>
+                        </div>
+                        <div class="form-group">
+                          <label>Capacity (Pax)</label>
+                          <input type="number" name="capacity" value="{{ room.capacity }}" required>
+                        </div>
+                        <div class="form-group">
+                          <label>Price (₱)</label>
+                          <input type="number" name="price" value="{{ room.price|floatformat:0 }}" required>
+                        </div>
                         <div class="form-group">
                           <label>Status</label>
                           <select name="availability_status">
@@ -240,8 +286,32 @@
               {% endif %}
 
 
+              <!-- Photo Gallery -->
+              <div style="margin: 20px 0 10px; padding-top: 20px; border-top: 1px solid var(--border);">
+                <div class="property-section-title">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  Photo Gallery ({{ item.house.photos.count }})
+                </div>
+                <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
+                  {% for photo in item.house.photos.all %}
+                  <div style="position:relative; width:120px; height:90px; border-radius:var(--radius-sm); overflow:hidden; border:1px solid var(--border);">
+                    <img src="{{ photo.image_url }}" style="width:100%;height:100%;object-fit:cover;">
+                    <form method="post" action="{% url 'delete_house_photo' photo.pk %}" style="position:absolute;top:4px;right:4px;" onsubmit="return confirm('Delete photo?');">
+                      {% csrf_token %}
+                      <button type="submit" style="background:rgba(239,68,68,0.9);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:0.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+                    </form>
+                  </div>
+                  {% endfor %}
+                </div>
+                <form method="post" action="{% url 'add_house_photo' item.house.pk %}" enctype="multipart/form-data" style="display:flex; gap:10px; align-items:center;">
+                  {% csrf_token %}
+                  <input type="file" name="image" accept="image/*" required style="font-size:0.8rem;color:var(--text-dim);">
+                  <button type="submit" class="btn-sm primary" style="padding:6px 14px;">Upload Photo</button>
+                </form>
+              </div>
+
               <!-- Add room toggle -->
-              <button class="add-room-toggle" onclick="toggleAddRoom('{{ item.house.pk }}')" id="add-room-toggle-{{ item.house.pk }}">
+              <button class="add-room-toggle" onclick="toggleAddRoom('{{ item.house.pk }}')" id="add-room-toggle-{{ item.house.pk }}" style="margin-top:16px;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 Add a Room
               </button>
@@ -433,6 +503,7 @@
                   💬 Reply
                 </button>
                 {% endif %}
+                <a href="{% url 'inquiry_thread' inq.pk %}" class="btn-sm" style="background:var(--surface2);border:1px solid var(--border);text-decoration:none;color:var(--text-main);">View Thread</a>
               </div>
             </div>
 
@@ -508,7 +579,27 @@
       </div>
 
       <!-- ════════════════════════════════════
-           TAB 5 — MESSAGES
+           TAB 5 — ANALYTICS
+      ════════════════════════════════════ -->
+      <div class="tab-pane" id="tab-analytics">
+        <div class="section-header">
+          <div class="section-title">Performance Analytics</div>
+          <div class="section-meta">Occupancy and revenue insights</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:24px;margin-bottom:32px;">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;">
+            <h3 style="font-size:1rem;margin-bottom:20px;text-align:center;">Property Occupancy</h3>
+            <canvas id="occupancyChart"></canvas>
+          </div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;display:flex;flex-direction:column;align-items:center;">
+            <h3 style="font-size:1rem;margin-bottom:20px;text-align:center;width:100%;">Estimated Monthly Revenue</h3>
+            <div style="max-width:300px;width:100%;"><canvas id="revenueChart"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════
+           TAB 6 — MESSAGES
       ════════════════════════════════════ -->
       <div class="tab-pane" id="tab-messages">
         <div class="section-header">
@@ -712,6 +803,11 @@
     form.classList.toggle('open');
   }
 
+  function toggleRoomEdit(roomId) {
+    const form = document.getElementById('room-edit-' + roomId);
+    form.classList.toggle('open');
+  }
+
   function toggleReply(inquiryId) {
     const area = document.getElementById('reply-area-' + inquiryId);
     area.classList.toggle('open');
@@ -855,6 +951,49 @@
   document.addEventListener('DOMContentLoaded', () => {
     _applyResFilter();
   });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  let analyticsLoaded = false;
+  function loadAnalytics() {
+    if(analyticsLoaded) return;
+    analyticsLoaded = true;
+    fetch('{% url "analytics_data" %}')
+      .then(res => res.json())
+      .then(data => {
+        if (!data.property_names || data.property_names.length === 0) return; // No data
+        
+        new Chart(document.getElementById('occupancyChart'), {
+          type: 'bar',
+          data: {
+            labels: data.property_names,
+            datasets: [
+              { label: 'Occupied', data: data.occupied_rooms, backgroundColor: '#10b981' },
+              { label: 'Vacant', data: data.vacant_rooms, backgroundColor: '#334155' }
+            ]
+          },
+          options: { 
+            responsive: true, 
+            scales: { x: { stacked: true, ticks: { color: '#94a3b8' } }, y: { stacked: true, beginAtZero: true, ticks: { color: '#94a3b8' } } }, 
+            plugins: { legend: { labels: { color: '#cbd5e1' } } } 
+          }
+        });
+
+        new Chart(document.getElementById('revenueChart'), {
+          type: 'doughnut',
+          data: {
+            labels: data.property_names,
+            datasets: [{
+              data: data.revenue_data,
+              backgroundColor: ['#7c3aed', '#3b82f6', '#f59e0b', '#ef4444', '#10b981', '#ec4899', '#06b6d4'],
+              borderWidth: 0
+            }]
+          },
+          options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1' } } } }
+        });
+      })
+      .catch(err => console.error("Error loading analytics data:", err));
+  }
 </script>
 
 </body>

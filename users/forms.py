@@ -111,3 +111,48 @@ class LoginForm(forms.Form):
         strip=False,
         widget=forms.PasswordInput(attrs={"placeholder": "Password"}),
     )
+
+
+class ProfileEditForm(forms.Form):
+    """Edit User + Profile in a single form."""
+    first_name = forms.CharField(
+        required=False,
+        label="First Name",
+        widget=forms.TextInput(attrs={"placeholder": "First name"}),
+    )
+    last_name = forms.CharField(
+        required=False,
+        label="Last Name",
+        widget=forms.TextInput(attrs={"placeholder": "Last name"}),
+    )
+    email = forms.EmailField(
+        required=True,
+        label="Email",
+        widget=forms.EmailInput(attrs={"placeholder": "Email address"}),
+    )
+    contact_number = forms.CharField(
+        required=False,
+        label="Contact Number",
+        widget=forms.TextInput(attrs={"placeholder": "+63 9XX XXX XXXX"}),
+    )
+    bio = forms.CharField(
+        required=False,
+        label="Bio",
+        widget=forms.Textarea(attrs={"placeholder": "Tell others a little about yourself…", "rows": 3}),
+        max_length=500,
+    )
+    profile_photo = forms.ImageField(
+        required=False,
+        label="Profile Photo",
+        widget=forms.ClearableFileInput(attrs={"accept": "image/*"}),
+    )
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._user = user
+
+    def clean_email(self):
+        email = self.cleaned_data.get("email")
+        if self._user and User.objects.filter(email__iexact=email).exclude(pk=self._user.pk).exists():
+            raise forms.ValidationError("This email is already in use by another account.")
+        return email

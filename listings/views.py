@@ -1,14 +1,17 @@
 import datetime
+import json
 
 from django.contrib.auth.models import User
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseForbidden
+from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
-from django.db.models import Q
+from django.db.models import Q, Sum, Avg
+from django.urls import reverse
 
 from .forms import (
     BoardingHouseForm,
+    BoardingHousePhotoForm,
     BookingForm,
     InquiryForm,
     InquiryReplyForm,
@@ -19,7 +22,10 @@ from .forms import (
     RoomForm,
 )
 
-from .models import BoardingHouse, Inquiry, Message, Reservation, Review, Room, UserBoardingHouse
+from .models import (
+    BoardingHouse, BoardingHousePhoto, Favorite, Inquiry, InquiryReply,
+    Message, Notification, Reservation, Review, Room, UserBoardingHouse,
+)
 
 
 # ──────────────────────────────────────────────
@@ -34,6 +40,16 @@ def _require_landlord(request):
     except Exception:
         pass
     return HttpResponseForbidden("You must be a landlord to access this page.")
+
+
+def _notify(user, message, notif_type="general", link=""):
+    """Create an in-app notification for a user."""
+    Notification.objects.create(
+        user=user,
+        message=message,
+        notif_type=notif_type,
+        link=link,
+    )
 
 
 def _room_is_available(room, check_in, check_out, exclude_reservation_pk=None):
@@ -428,6 +444,32 @@ def add_room(request, house_pk):
 
 
 @login_required
+def toggle_room_availability(request, room_pk):
+    """Landlord toggles a room's availability directly."""
+    forbidden = _require_landlord(request)
+    if forbidden:
+        return forbidden
+
+    room = get_object_or_404(Room, pk=room_pk)
+    owns = UserBoardingHouse.objects.filter(
+        user=request.user,
+        boarding_house=room.boarding_house,
+        assigned_role="landlord",
+    ).exists()
+    if not owns:
+        return HttpResponseForbidden("You don't own this property.")
+
+    if request.method == "POST":
+        room.availability_status = (
+            "Available" if room.availability_status == "Not Available" else "Not Available"
+        )
+        room.save(update_fields=["availability_status"])
+        messages.success(request, f"Room {room.room_number} is now {room.availability_status}.")
+
+    return redirect("landlord_dashboard")
+
+
+@login_required
 def edit_room_status(request, room_pk):
     """Landlord edits a room's availability status and available_from date."""
     forbidden = _require_landlord(request)
@@ -491,6 +533,20 @@ def update_reservation_status(request, pk):
                 if not other_active:
                     reservation.room.availability_status = "Available"
                     reservation.room.save(update_fields=["availability_status"])
+
+            # Notify the tenant
+            house_name = reservation.room.boarding_house.house_name
+            notif_msgs = {
+                "Confirmed": f"🎉 Your reservation at {house_name} (Room {reservation.room.room_number}) has been confirmed!",
+                "Cancelled": f"❌ Your reservation at {house_name} (Room {reservation.room.room_number}) was cancelled by the landlord.",
+                "Completed": f"✅ Your stay at {house_name} (Room {reservation.room.room_number}) has been marked complete.",
+            }
+            _notify(
+                reservation.user,
+                notif_msgs.get(new_status, f"Booking #{reservation.pk} updated to {new_status}."),
+                notif_type="status_change",
+                link="/users/dashboard/#reservations",
+            )
 
             messages.success(request, f"Booking #{reservation.pk} marked as {new_status}.")
         else:
@@ -589,3 +645,289 @@ def mark_message_read(request, pk):
     msg.save()
     role = getattr(getattr(request.user, "profile", None), "role", "tenant")
     return redirect("landlord_dashboard" if role == "landlord" else "dashboard")
+
+
+# ──────────────────────────────────────────────
+# FAVORITES / WISHLIST
+# ──────────────────────────────────────────────
+
+@login_required
+def toggle_favorite(request, pk):
+    """POST — add or remove a boarding house from the user's wishlist."""
+    if request.method != "POST":
+        return redirect("listing_detail", pk=pk)
+    listing = get_object_or_404(BoardingHouse, pk=pk, is_active=True)
+    fav, created = Favorite.objects.get_or_create(user=request.user, boarding_house=listing)
+    if not created:
+        fav.delete()
+        is_fav = False
+    else:
+        is_fav = True
+    # Support AJAX from the listing card hearts
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
+        return JsonResponse({"is_favorite": is_fav})
+    return redirect(request.META.get("HTTP_REFERER", "dashboard"))
+
+
+# ──────────────────────────────────────────────
+# DELETE HOUSE / ROOM
+# ──────────────────────────────────────────────
+
+@login_required
+def delete_house(request, pk):
+    """Landlord soft-deletes a boarding house (is_active=False)."""
+    forbidden = _require_landlord(request)
+    if forbidden:
+        return forbidden
+
+    house = get_object_or_404(BoardingHouse, pk=pk)
+    owns = UserBoardingHouse.objects.filter(
+        user=request.user, boarding_house=house, assigned_role="landlord"
+    ).exists()
+    if not owns:
+        return HttpResponseForbidden("You don't own this property.")
+
+    if request.method == "POST":
+        house.is_active = False
+        house.save(update_fields=["is_active"])
+        messages.success(request, f"'{house.house_name}' has been removed from your listings.")
+
+    return redirect("landlord_dashboard")
+
+
+@login_required
+def delete_room(request, room_pk):
+    """Landlord permanently deletes a room."""
+    forbidden = _require_landlord(request)
+    if forbidden:
+        return forbidden
+
+    room = get_object_or_404(Room, pk=room_pk)
+    owns = UserBoardingHouse.objects.filter(
+        user=request.user, boarding_house=room.boarding_house, assigned_role="landlord"
+    ).exists()
+    if not owns:
+        return HttpResponseForbidden("You don't own this property.")
+
+    if request.method == "POST":
+        room_label = f"Room {room.room_number}"
+        room.delete()
+        messages.success(request, f"{room_label} has been deleted.")
+
+    return redirect("landlord_dashboard")
+
+
+# ──────────────────────────────────────────────
+# MULTI-PHOTO GALLERY
+# ──────────────────────────────────────────────
+
+@login_required
+def add_house_photo(request, house_pk):
+    """Landlord uploads an additional gallery photo."""
+    forbidden = _require_landlord(request)
+    if forbidden:
+        return forbidden
+
+    house = get_object_or_404(BoardingHouse, pk=house_pk)
+    owns = UserBoardingHouse.objects.filter(
+        user=request.user, boarding_house=house, assigned_role="landlord"
+    ).exists()
+    if not owns:
+        return HttpResponseForbidden("You don't own this property.")
+
+    if request.method == "POST":
+        form = BoardingHousePhotoForm(request.POST, request.FILES)
+        if form.is_valid():
+            photo = form.save(commit=False)
+            photo.boarding_house = house
+            photo.save()
+            messages.success(request, "Photo added to gallery.")
+        else:
+            messages.error(request, "Invalid photo. Please upload a valid image file.")
+
+    return redirect("landlord_dashboard")
+
+
+@login_required
+def delete_house_photo(request, photo_pk):
+    """Landlord deletes one gallery photo."""
+    forbidden = _require_landlord(request)
+    if forbidden:
+        return forbidden
+
+    photo = get_object_or_404(BoardingHousePhoto, pk=photo_pk)
+    owns = UserBoardingHouse.objects.filter(
+        user=request.user, boarding_house=photo.boarding_house, assigned_role="landlord"
+    ).exists()
+    if not owns:
+        return HttpResponseForbidden("You don't own this property.")
+
+    if request.method == "POST":
+        photo.delete()
+        messages.success(request, "Photo removed.")
+
+    return redirect("landlord_dashboard")
+
+
+# ──────────────────────────────────────────────
+# INQUIRY CONVERSATION THREAD
+# ──────────────────────────────────────────────
+
+@login_required
+def inquiry_thread(request, pk):
+    """Show the full conversation thread for an inquiry."""
+    inquiry = get_object_or_404(Inquiry, pk=pk)
+
+    # Allow access to the tenant who sent it OR the landlord who owns the property
+    is_tenant = inquiry.user == request.user
+    is_landlord_owner = UserBoardingHouse.objects.filter(
+        user=request.user,
+        boarding_house=inquiry.boarding_house,
+        assigned_role="landlord",
+    ).exists()
+
+    if not (is_tenant or is_landlord_owner):
+        return HttpResponseForbidden("You don't have access to this inquiry.")
+
+    replies = inquiry.replies.select_related("sender").all()
+    reply_form = InquiryReplyForm()
+
+    return render(request, "listings/inquiry_thread.html", {
+        "inquiry": inquiry,
+        "replies": replies,
+        "reply_form": reply_form,
+        "is_landlord": is_landlord_owner,
+    })
+
+
+@login_required
+def reply_inquiry_thread(request, pk):
+    """POST — add a reply to an inquiry thread."""
+    inquiry = get_object_or_404(Inquiry, pk=pk)
+
+    is_tenant = inquiry.user == request.user
+    is_landlord_owner = UserBoardingHouse.objects.filter(
+        user=request.user,
+        boarding_house=inquiry.boarding_house,
+        assigned_role="landlord",
+    ).exists()
+
+    if not (is_tenant or is_landlord_owner):
+        return HttpResponseForbidden("You don't have access to this inquiry.")
+
+    if request.method == "POST":
+        form = InquiryReplyForm(request.POST)
+        if form.is_valid():
+            InquiryReply.objects.create(
+                inquiry=inquiry,
+                sender=request.user,
+                body=form.cleaned_data["body"],
+            )
+            if is_landlord_owner and inquiry.status == "Pending":
+                inquiry.status = "Responded"
+                inquiry.save(update_fields=["status"])
+
+            # Notify the other party
+            if is_landlord_owner:
+                _notify(
+                    inquiry.user,
+                    f"💬 The landlord replied to your inquiry about {inquiry.boarding_house.house_name}.",
+                    notif_type="inquiry_reply",
+                    link=f"/listings/inquiries/{inquiry.pk}/thread/",
+                )
+            else:
+                # Notify the landlord(s) who own this house
+                landlord_assignments = UserBoardingHouse.objects.filter(
+                    boarding_house=inquiry.boarding_house, assigned_role="landlord"
+                ).select_related("user")
+                for assignment in landlord_assignments:
+                    _notify(
+                        assignment.user,
+                        f"💬 {request.user.username} replied to their inquiry about {inquiry.boarding_house.house_name}.",
+                        notif_type="inquiry_reply",
+                        link=f"/listings/inquiries/{inquiry.pk}/thread/",
+                    )
+
+            messages.success(request, "Reply sent.")
+        else:
+            messages.error(request, "Reply cannot be empty.")
+
+    return redirect("inquiry_thread", pk=pk)
+
+
+# ──────────────────────────────────────────────
+# NOTIFICATIONS
+# ──────────────────────────────────────────────
+
+@login_required
+def notifications_list(request):
+    """Full notifications page."""
+    notifs = Notification.objects.filter(user=request.user).order_by("-created_at")[:50]
+    return render(request, "listings/notifications.html", {"notifications": notifs})
+
+
+@login_required
+def mark_notification_read(request, pk):
+    """Mark a single notification as read and redirect to its link."""
+    notif = get_object_or_404(Notification, pk=pk, user=request.user)
+    notif.is_read = True
+    notif.save(update_fields=["is_read"])
+    if notif.link:
+        return redirect(notif.link)
+    role = getattr(getattr(request.user, "profile", None), "role", "tenant")
+    return redirect("landlord_dashboard" if role == "landlord" else "dashboard")
+
+
+@login_required
+def mark_all_notifications_read(request):
+    """Mark ALL notifications for the current user as read."""
+    if request.method == "POST":
+        Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    role = getattr(getattr(request.user, "profile", None), "role", "tenant")
+    return redirect("landlord_dashboard" if role == "landlord" else "dashboard")
+
+
+# ──────────────────────────────────────────────
+# LANDLORD ANALYTICS DATA
+# ──────────────────────────────────────────────
+
+@login_required
+def analytics_data(request):
+    """Return JSON analytics for the landlord's properties."""
+    forbidden = _require_landlord(request)
+    if forbidden:
+        return JsonResponse({"error": "Forbidden"}, status=403)
+
+    houses = BoardingHouse.objects.filter(
+        user_assignments__user=request.user,
+        user_assignments__assigned_role="landlord",
+        is_active=True,
+    ).prefetch_related("rooms").distinct()
+
+    data = []
+    for house in houses:
+        rooms = house.rooms.all()
+        total_rooms = rooms.count()
+        occupied_rooms = rooms.filter(availability_status="Not Available").count()
+        occupancy_rate = round((occupied_rooms / total_rooms * 100) if total_rooms else 0, 1)
+
+        confirmed_reservations = Reservation.objects.filter(
+            room__boarding_house=house,
+            status__in=("Confirmed", "Completed"),
+        )
+        revenue = sum(
+            r.computed_total or r.room.price
+            for r in confirmed_reservations
+        )
+
+        data.append({
+            "name": house.house_name,
+            "total_rooms": total_rooms,
+            "occupied_rooms": occupied_rooms,
+            "occupancy_rate": occupancy_rate,
+            "revenue": revenue,
+            "confirmed_count": confirmed_reservations.filter(status="Confirmed").count(),
+            "completed_count": confirmed_reservations.filter(status="Completed").count(),
+        })
+
+    return JsonResponse({"properties": data})

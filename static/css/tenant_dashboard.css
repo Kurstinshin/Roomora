@@ -341,3 +341,22 @@ body {
 .toast.success { border-left: 3px solid var(--success); }
 .toast.error   { border-left: 3px solid var(--danger); }
 @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+/* ── FAVORITE BUTTON ── */
+.card-image-wrap { position: relative; }
+.fav-btn {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(15,15,26,0.6); backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.15);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 1rem;
+  transition: transform 0.2s, background 0.2s;
+}
+.fav-btn:hover { transform: scale(1.2); }
+.fav-btn.faved { background: rgba(239,68,68,0.2); border-color: rgba(239,68,68,0.4); }
+
+/* ── SIDEBAR FOOTER GAP ── */
+.sidebar-footer { display: flex; flex-direction: column; gap: 12px; padding: 16px 20px; border-top: 1px solid var(--border); margin-top: auto; }
+
+/* ── TOPBAR WITH BELL ── */
+.topbar { display: flex; align-items: center; justify-content: space-between; }
