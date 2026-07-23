@@ -22,6 +22,8 @@ urlpatterns = [
     path("landlord/<int:pk>/toggle/", views.toggle_house_availability, name="toggle_house_availability"),
     path("landlord/houses/<int:house_pk>/rooms/add/", views.add_room, name="add_room"),
     path("landlord/houses/<int:pk>/edit/", views.edit_house, name="edit_house"),
+    path("landlord/rooms/<int:room_pk>/edit/", views.edit_room_status, name="edit_room_status"),
     path("landlord/reservations/<int:pk>/update/", views.update_reservation_status, name="update_reservation_status"),
     path("landlord/inquiries/<int:pk>/reply/", views.reply_inquiry, name="reply_inquiry"),
 ]
+

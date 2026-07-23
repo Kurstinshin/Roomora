@@ -106,6 +106,18 @@ class RoomForm(forms.ModelForm):
         }
 
 
+class RoomEditForm(forms.ModelForm):
+    """Landlord quick-edit: change availability status and available_from date."""
+    class Meta:
+        model = Room
+        fields = ["availability_status", "available_from"]
+        widgets = {
+            "availability_status": forms.Select(),
+            "available_from": forms.DateInput(attrs={"type": "date"}),
+        }
+
+
+
 class MessageForm(forms.Form):
     recipient_id = forms.IntegerField(widget=forms.HiddenInput())
     boarding_house_id = forms.IntegerField(required=False, widget=forms.HiddenInput())

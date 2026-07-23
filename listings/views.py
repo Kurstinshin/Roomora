@@ -15,8 +15,10 @@ from .forms import (
     MessageForm,
     ReservationForm,
     ReviewForm,
+    RoomEditForm,
     RoomForm,
 )
+
 from .models import BoardingHouse, Inquiry, Message, Reservation, Review, Room, UserBoardingHouse
 
 
@@ -366,22 +368,34 @@ def landlord_dashboard(request):
     all_inquiries.sort(key=lambda i: i.date_sent, reverse=True)
     all_reviews.sort(key=lambda r: r.review_date, reverse=True)
 
-    # Counts for landlord stats
+    # Counts for landlord stats — reservations
     pending_count   = sum(1 for r in all_reservations if r.status == "Pending")
     confirmed_count = sum(1 for r in all_reservations if r.status == "Confirmed")
+    completed_count = sum(1 for r in all_reservations if r.status == "Completed")
+    cancelled_count = sum(1 for r in all_reservations if r.status == "Cancelled")
+
+    # Counts for inquiry filters
+    pending_inq_count   = sum(1 for i in all_inquiries if i.status == "Pending")
+    responded_inq_count = sum(1 for i in all_inquiries if i.status == "Responded")
+    closed_inq_count    = sum(1 for i in all_inquiries if i.status == "Closed")
 
     return render(request, "listings/landlord_dashboard.html", {
-        "houses":           house_data,
-        "all_reservations": all_reservations,
-        "all_inquiries":    all_inquiries,
-        "all_reviews":      all_reviews,
-        "inbox_messages":   inbox_messages,
-        "unread_count":     inbox_messages.filter(is_read=False).count(),
-        "pending_count":    pending_count,
-        "confirmed_count":  confirmed_count,
-        "house_form":       BoardingHouseForm(),
-        "reply_form":       InquiryReplyForm(),
-        "message_form":     MessageForm(),
+        "houses":              house_data,
+        "all_reservations":    all_reservations,
+        "all_inquiries":       all_inquiries,
+        "all_reviews":         all_reviews,
+        "inbox_messages":      inbox_messages,
+        "unread_count":        inbox_messages.filter(is_read=False).count(),
+        "pending_count":       pending_count,
+        "confirmed_count":     confirmed_count,
+        "completed_count":     completed_count,
+        "cancelled_count":     cancelled_count,
+        "pending_inq_count":   pending_inq_count,
+        "responded_inq_count": responded_inq_count,
+        "closed_inq_count":    closed_inq_count,
+        "house_form":          BoardingHouseForm(),
+        "reply_form":          InquiryReplyForm(),
+        "message_form":        MessageForm(),
     })
 
 
@@ -414,12 +428,46 @@ def add_room(request, house_pk):
 
 
 @login_required
+def edit_room_status(request, room_pk):
+    """Landlord edits a room's availability status and available_from date."""
+    forbidden = _require_landlord(request)
+    if forbidden:
+        return forbidden
+
+    room = get_object_or_404(Room, pk=room_pk)
+    owns = UserBoardingHouse.objects.filter(
+        user=request.user,
+        boarding_house=room.boarding_house,
+        assigned_role="landlord",
+    ).exists()
+    if not owns:
+        return HttpResponseForbidden("You don't own this property.")
+
+    if request.method == "POST":
+        form = RoomEditForm(request.POST, instance=room)
+        if form.is_valid():
+            form.save()
+            messages.success(
+                request,
+                f"Room {room.room_number} updated — "
+                f"{room.availability_status}"
+                + (f", available from {room.available_from}" if room.available_from else "."),
+            )
+        else:
+            messages.error(request, "Invalid room data. Please try again.")
+
+    return redirect("landlord_dashboard")
+
+
+
+@login_required
 def update_reservation_status(request, pk):
     forbidden = _require_landlord(request)
     if forbidden:
         return forbidden
 
     reservation = get_object_or_404(Reservation, pk=pk)
+
     owns = UserBoardingHouse.objects.filter(
         user=request.user,
         boarding_house=reservation.room.boarding_house,

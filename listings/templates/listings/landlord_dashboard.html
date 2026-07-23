@@ -194,18 +194,51 @@
               {% if item.rooms %}
               <div class="rooms-grid">
                 {% for room in item.rooms %}
-                <div class="room-chip">
-                  <div class="room-chip-name">Room {{ room.room_number }}</div>
-                  <div class="room-chip-meta">{{ room.room_type|capfirst }} · {{ room.capacity }} pax · ₱{{ room.price|intcomma }}/mo</div>
-                  <div style="margin-top:5px;">
-                    <span class="status-pill {% if room.availability_status == 'Available' %}confirmed{% else %}cancelled{% endif %}" style="font-size:0.65rem;">
-                      {{ room.availability_status }}
-                    </span>
+                <div class="room-chip" id="room-chip-{{ room.pk }}">
+                  <div class="room-chip-top">
+                    <div>
+                      <div class="room-chip-name">Room {{ room.room_number }}</div>
+                      <div class="room-chip-meta">{{ room.room_type|capfirst }} · {{ room.capacity }} pax · ₱{{ room.price|intcomma }}/mo</div>
+                      <div style="margin-top:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                        <span class="status-pill {% if room.availability_status == 'Available' %}confirmed{% else %}cancelled{% endif %}" style="font-size:0.65rem;">
+                          {{ room.availability_status }}
+                        </span>
+                        {% if room.available_from %}
+                        <span style="font-size:0.65rem;color:var(--text-dim);">from {{ room.available_from }}</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                    <button class="btn-sm primary" style="font-size:0.7rem;padding:4px 10px;white-space:nowrap;"
+                            onclick="toggleRoomEdit('{{ room.pk }}')">&#9998; Edit</button>
+                  </div>
+                  <!-- inline room edit form -->
+                  <div class="room-edit-form" id="room-edit-{{ room.pk }}">
+                    <form method="post" action="{% url 'edit_room_status' room.pk %}">
+                      {% csrf_token %}
+                      <div class="room-edit-grid">
+                        <div class="form-group">
+                          <label>Status</label>
+                          <select name="availability_status">
+                            <option value="Available" {% if room.availability_status == 'Available' %}selected{% endif %}>Available</option>
+                            <option value="Not Available" {% if room.availability_status == 'Not Available' %}selected{% endif %}>Not Available</option>
+                          </select>
+                        </div>
+                        <div class="form-group">
+                          <label>Available From <span style="font-weight:400;color:var(--text-dim);">(optional)</span></label>
+                          <input type="date" name="available_from" value="{{ room.available_from|default:'' }}">
+                        </div>
+                      </div>
+                      <div style="display:flex;gap:8px;margin-top:8px;">
+                        <button type="submit" class="btn-sm success" style="padding:6px 14px;">&#10003; Save</button>
+                        <button type="button" class="btn-sm danger" onclick="toggleRoomEdit('{{ room.pk }}')">Cancel</button>
+                      </div>
+                    </form>
                   </div>
                 </div>
                 {% endfor %}
               </div>
               {% endif %}
+
 
               <!-- Add room toggle -->
               <button class="add-room-toggle" onclick="toggleAddRoom('{{ item.house.pk }}')" id="add-room-toggle-{{ item.house.pk }}">
@@ -262,13 +295,35 @@
       <div class="tab-pane" id="tab-reservations">
         <div class="section-header">
           <div class="section-title">Reservations &amp; Bookings</div>
-          <div class="section-meta">{{ all_reservations|length }} total</div>
+          <div class="section-meta" id="res-count-label">{{ all_reservations|length }} total</div>
         </div>
 
+        <!-- Filter toolbar -->
+        <div class="filter-bar" id="res-filter-bar">
+          <div class="filter-chips">
+            <button class="filter-chip active" data-filter="all" onclick="filterReservations('all', this)">All <span class="chip-count" id="res-count-all">{{ all_reservations|length }}</span></button>
+            <button class="filter-chip" data-filter="Pending" onclick="filterReservations('Pending', this)">⏳ Pending <span class="chip-count" id="res-count-pending">{{ pending_count }}</span></button>
+            <button class="filter-chip" data-filter="Confirmed" onclick="filterReservations('Confirmed', this)">✅ Confirmed <span class="chip-count" id="res-count-confirmed">{{ confirmed_count }}</span></button>
+            <button class="filter-chip" data-filter="Completed" onclick="filterReservations('Completed', this)">🏁 Completed <span class="chip-count" id="res-count-completed">{{ completed_count }}</span></button>
+            <button class="filter-chip" data-filter="Cancelled" onclick="filterReservations('Cancelled', this)">✗ Cancelled <span class="chip-count" id="res-count-cancelled">{{ cancelled_count }}</span></button>
+            <button class="filter-chip history" data-filter="history" onclick="filterReservations('history', this)">🕘 History</button>
+          </div>
+          <div class="filter-search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="res-search" placeholder="Search by tenant or property…" oninput="searchReservations(this.value)">
+          </div>
+        </div>
+
+
         {% if all_reservations %}
-        <div class="activity-list">
+        <div class="activity-list" id="res-list">
           {% for res in all_reservations %}
-          <div class="activity-card" id="res-{{ res.pk }}">
+          <div class="activity-card res-item"
+               id="res-{{ res.pk }}"
+               data-status="{{ res.status }}"
+               data-tenant="{{ res.user.username|lower }}"
+               data-house="{{ res.room.boarding_house.house_name|lower }}"
+               data-type="{{ res.booking_type }}">
             <div class="activity-main">
               <div class="activity-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                 {{ res.user.username }} — {{ res.room.boarding_house.house_name }}, Room {{ res.room.room_number }}
@@ -320,6 +375,10 @@
           </div>
           {% endfor %}
         </div>
+        <div class="filter-empty" id="res-empty" style="display:none;">
+          <div class="empty-icon">🔍</div>
+          <p>No reservations match this filter.</p>
+        </div>
         {% else %}
           <div class="empty-state">
             <div class="empty-icon">📋</div>
@@ -336,13 +395,32 @@
       <div class="tab-pane" id="tab-inquiries">
         <div class="section-header">
           <div class="section-title">All Inquiries</div>
-          <div class="section-meta">{{ all_inquiries|length }} total</div>
+          <div class="section-meta" id="inq-count-label">{{ all_inquiries|length }} total</div>
+        </div>
+
+        <!-- Filter toolbar -->
+        <div class="filter-bar" id="inq-filter-bar">
+          <div class="filter-chips">
+            <button class="filter-chip active" data-filter="all" onclick="filterInquiries('all', this)">All <span class="chip-count">{{ all_inquiries|length }}</span></button>
+            <button class="filter-chip" data-filter="Pending" onclick="filterInquiries('Pending', this)">⏳ Pending <span class="chip-count">{{ pending_inq_count }}</span></button>
+            <button class="filter-chip" data-filter="Responded" onclick="filterInquiries('Responded', this)">✅ Responded <span class="chip-count">{{ responded_inq_count }}</span></button>
+            <button class="filter-chip" data-filter="Closed" onclick="filterInquiries('Closed', this)">🔒 Closed <span class="chip-count">{{ closed_inq_count }}</span></button>
+          </div>
+          <div class="filter-search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="inq-search" placeholder="Search by tenant or property…" oninput="searchInquiries(this.value)">
+          </div>
         </div>
 
         {% if all_inquiries %}
-        <div class="activity-list">
+        <div class="activity-list" id="inq-list">
           {% for inq in all_inquiries %}
-          <div class="activity-card" style="flex-direction:column;align-items:stretch;" id="inq-{{ inq.pk }}">
+          <div class="activity-card inq-item"
+               style="flex-direction:column;align-items:stretch;"
+               id="inq-{{ inq.pk }}"
+               data-status="{{ inq.status }}"
+               data-tenant="{{ inq.user.username|lower }}"
+               data-house="{{ inq.boarding_house.house_name|lower }}">
             <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
               <div class="activity-main">
                 <div class="activity-title">{{ inq.user.username }} — {{ inq.boarding_house.house_name }}</div>
@@ -375,6 +453,10 @@
             </div>
           </div>
           {% endfor %}
+        </div>
+        <div class="filter-empty" id="inq-empty" style="display:none;">
+          <div class="empty-icon">🔍</div>
+          <p>No inquiries match this filter.</p>
         </div>
         {% else %}
           <div class="empty-state">
@@ -606,7 +688,7 @@
   const TABS = ['properties', 'reservations', 'inquiries', 'reviews', 'messages'];
   const TITLES = {
     properties:   ['Properties', 'Manage your boarding houses and rooms'],
-    reservations: ['Reservations', 'Review and update tenant reservation requests'],
+    reservations: ['Reservations & Bookings', 'Review and update tenant reservation requests'],
     inquiries:    ['Inquiries', 'Read and reply to tenant questions'],
     reviews:      ['Reviews', 'See what tenants say about your properties'],
     messages:     ['Messages', 'Your message inbox from tenants'],
@@ -633,6 +715,90 @@
   function toggleReply(inquiryId) {
     const area = document.getElementById('reply-area-' + inquiryId);
     area.classList.toggle('open');
+  }
+
+  // ─── RESERVATION FILTERING ───────────────────────────────────
+  let _resActiveFilter = 'all';
+  let _resSearchTerm   = '';
+
+  function filterReservations(filter, btn) {
+    _resActiveFilter = filter;
+    document.querySelectorAll('#res-filter-bar .filter-chip').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    _applyResFilter();
+  }
+
+  function searchReservations(term) {
+    _resSearchTerm = term.toLowerCase().trim();
+    _applyResFilter();
+  }
+
+  function _applyResFilter() {
+    const items = document.querySelectorAll('#res-list .res-item');
+    let visible = 0;
+    const HISTORY = ['Cancelled', 'Completed'];
+    items.forEach(item => {
+      const status  = item.dataset.status;
+      const tenant  = item.dataset.tenant  || '';
+      const house   = item.dataset.house   || '';
+      const matchSearch = !_resSearchTerm ||
+        tenant.includes(_resSearchTerm) ||
+        house.includes(_resSearchTerm);
+      let matchFilter;
+      if (_resActiveFilter === 'all') {
+        matchFilter = !HISTORY.includes(status); // active only
+      } else if (_resActiveFilter === 'history') {
+        matchFilter = HISTORY.includes(status);
+      } else {
+        matchFilter = status === _resActiveFilter;
+      }
+      const show = matchFilter && matchSearch;
+      item.style.display = show ? '' : 'none';
+      item.style.animation = show ? 'fadeSlideIn 0.25s ease' : '';
+      if (show) visible++;
+    });
+    const emptyEl = document.getElementById('res-empty');
+    if (emptyEl) emptyEl.style.display = visible === 0 ? 'flex' : 'none';
+    const label = document.getElementById('res-count-label');
+    if (label) label.textContent = visible + ' shown';
+  }
+
+  // ─── INQUIRY FILTERING ───────────────────────────────────────
+  let _inqActiveFilter = 'all';
+  let _inqSearchTerm   = '';
+
+  function filterInquiries(filter, btn) {
+    _inqActiveFilter = filter;
+    document.querySelectorAll('#inq-filter-bar .filter-chip').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    _applyInqFilter();
+  }
+
+  function searchInquiries(term) {
+    _inqSearchTerm = term.toLowerCase().trim();
+    _applyInqFilter();
+  }
+
+  function _applyInqFilter() {
+    const items = document.querySelectorAll('#inq-list .inq-item');
+    let visible = 0;
+    items.forEach(item => {
+      const status = item.dataset.status;
+      const tenant = item.dataset.tenant || '';
+      const house  = item.dataset.house  || '';
+      const matchSearch = !_inqSearchTerm ||
+        tenant.includes(_inqSearchTerm) ||
+        house.includes(_inqSearchTerm);
+      const matchFilter = _inqActiveFilter === 'all' || status === _inqActiveFilter;
+      const show = matchFilter && matchSearch;
+      item.style.display = show ? '' : 'none';
+      item.style.animation = show ? 'fadeSlideIn 0.25s ease' : '';
+      if (show) visible++;
+    });
+    const emptyEl = document.getElementById('inq-empty');
+    if (emptyEl) emptyEl.style.display = visible === 0 ? 'flex' : 'none';
+    const label = document.getElementById('inq-count-label');
+    if (label) label.textContent = visible + ' shown';
   }
 
   // Auto-dismiss toasts after 4s
@@ -683,6 +849,11 @@
         area.style.borderColor = '';
       }
     }
+  });
+
+  // Apply default filter on load (hide history from main view)
+  document.addEventListener('DOMContentLoaded', () => {
+    _applyResFilter();
   });
 </script>
 

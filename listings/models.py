@@ -70,6 +70,8 @@ class Room(models.Model):
     capacity = models.PositiveIntegerField()
     price = models.PositiveIntegerField()
     availability_status = models.CharField(max_length=20, choices=AVAILABILITY_CHOICES, default="Available")
+    available_from = models.DateField(null=True, blank=True, help_text="Date the room becomes available (optional)")
+
 
     class Meta:
         unique_together = ("boarding_house", "room_number")
